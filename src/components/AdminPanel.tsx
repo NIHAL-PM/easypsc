@@ -6,45 +6,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { motion } from 'framer-motion';
-import { Loader2Icon, UsersIcon, BarChartIcon, CreditCardIcon, ActivityIcon, CheckCircleIcon, XCircleIcon, BadgeIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Loader2Icon, 
+  UsersIcon, 
+  BarChartIcon, 
+  CreditCardIcon, 
+  ActivityIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  BadgeIcon,
+  TrendingUpIcon,
+  UserPlusIcon,
+  ShieldIcon 
+} from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { useAppStore } from '@/lib/store';
 import { User, ExamType } from '@/types';
-
-// Sample mock users for the admin panel
-const mockUsers: User[] = [
-  {
-    id: 'user1',
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@example.com',
-    examType: 'PSC',
-    questionsAnswered: 142,
-    questionsCorrect: 97,
-    isPremium: false,
-    monthlyQuestionsRemaining: 12
-  },
-  {
-    id: 'user2',
-    name: 'Priya Patel',
-    email: 'priya.patel@example.com',
-    examType: 'UPSC',
-    questionsAnswered: 235,
-    questionsCorrect: 187,
-    isPremium: true,
-    monthlyQuestionsRemaining: 999
-  },
-  {
-    id: 'user3',
-    name: 'Ajay Kumar',
-    email: 'ajay.kumar@example.com',
-    examType: 'SSC',
-    questionsAnswered: 87,
-    questionsCorrect: 54,
-    isPremium: false,
-    monthlyQuestionsRemaining: 3
-  }
-];
+import AnimatedText from './AnimatedText';
 
 const AdminPanel = () => {
   const { toast } = useToast();
@@ -54,6 +33,7 @@ const AdminPanel = () => {
   const [password, setPassword] = useState('');
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [displayedUsers, setDisplayedUsers] = useState<User[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   const { allUsers, upgradeUserToPremium, addUser } = useAppStore();
   
@@ -94,18 +74,9 @@ const AdminPanel = () => {
     if (isLoggedIn && !usersLoaded) {
       setIsLoading(true);
       
-      // Add mock users if there are no users in the store yet
+      // Use real data from store
       setTimeout(() => {
-        let users = [...allUsers];
-        
-        if (users.length === 0) {
-          // Add mock users to the store
-          mockUsers.forEach(user => {
-            addUser(user);
-          });
-          users = mockUsers;
-        }
-        
+        const users = [...allUsers];
         setDisplayedUsers(users);
         setUsersLoaded(true);
         setIsLoading(false);
@@ -133,241 +104,552 @@ const AdminPanel = () => {
   
   if (!isLoggedIn) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-md mx-auto mt-10"
-      >
-        <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm neo-morphism">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Admin Login</CardTitle>
-            <CardDescription>
-              Please enter your credentials to access the admin panel
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input 
-                id="username" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                placeholder="Enter username"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Enter password"
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              onClick={handleLogin} 
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                <>Login</>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-      </motion.div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/40">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full mx-auto px-4"
+        >
+          <Card className="overflow-hidden border-2 border-primary/10 shadow-lg bg-card/95 backdrop-blur-sm rounded-xl">
+            <CardHeader className="pb-2 space-y-1">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mx-auto mb-2"
+              >
+                <AnimatedText />
+              </motion.div>
+              <CardTitle className="text-xl text-center">Admin Login</CardTitle>
+              <CardDescription className="text-center">
+                Please enter your credentials to access the admin panel
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="username">Username</Label>
+                <Input 
+                  id="username" 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  placeholder="Enter username"
+                  className="border-input/60 focus:border-primary"
+                />
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="Enter password"
+                  className="border-input/60 focus:border-primary"
+                />
+              </motion.div>
+            </CardContent>
+            <CardFooter>
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="w-full"
+              >
+                <Button 
+                  onClick={handleLogin} 
+                  className="w-full bg-gradient-to-r from-primary/90 to-primary shadow-md"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    <>Login</>
+                  )}
+                </Button>
+              </motion.div>
+            </CardFooter>
+          </Card>
+        </motion.div>
+      </div>
     );
   }
+  
+  // Dashboard stats
+  const totalUsers = displayedUsers.length;
+  const premiumUsers = displayedUsers.filter(u => u.isPremium).length;
+  const totalQuestionsAnswered = displayedUsers.reduce((sum, user) => sum + user.questionsAnswered, 0);
+  const averageAccuracy = totalQuestionsAnswered > 0
+    ? Math.round((displayedUsers.reduce((sum, user) => sum + user.questionsCorrect, 0) / totalQuestionsAnswered) * 100)
+    : 0;
+
+  // Calculate revenue (₹20 per premium user)
+  const revenue = premiumUsers * 20;
   
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="container mx-auto p-4 max-w-5xl"
+      className="min-h-screen bg-gradient-to-br from-background to-muted/40"
     >
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">EasyPSC Admin Panel</h1>
-        <Button variant="outline" onClick={handleLogout}>Logout</Button>
+      <div className="container mx-auto p-4 max-w-6xl">
+        <div className="flex justify-between items-center mb-6 border-b pb-4">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <ShieldIcon className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              EasyPSC Admin
+            </h1>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="flex gap-2 items-center"
+            >
+              <span>Logout</span>
+            </Button>
+          </motion.div>
+        </div>
+        
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab} 
+          className="w-full"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <TabsList className="grid grid-cols-4 mb-6 p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger 
+                value="dashboard" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <BarChartIcon className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger 
+                value="users" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <UsersIcon className="h-4 w-4" />
+                Users
+              </TabsTrigger>
+              <TabsTrigger 
+                value="payments" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <CreditCardIcon className="h-4 w-4" />
+                Payments
+              </TabsTrigger>
+              <TabsTrigger 
+                value="activity" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <ActivityIcon className="h-4 w-4" />
+                Activity
+              </TabsTrigger>
+            </TabsList>
+          </motion.div>
+          
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TabsContent value="dashboard" className="space-y-6">
+                <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChartIcon className="h-5 w-5 text-primary" />
+                      Overview
+                    </CardTitle>
+                    <CardDescription>
+                      Platform statistics at a glance
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className="border border-border/20 bg-accent/10 hover:bg-accent/20 transition-colors">
+                      <CardContent className="p-4 flex flex-col">
+                        <p className="text-muted-foreground text-sm">Total Users</p>
+                        <div className="flex items-end justify-between mt-2">
+                          <h3 className="text-3xl font-bold">{totalUsers}</h3>
+                          <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center">
+                            <UserPlusIcon className="h-3 w-3 mr-1" />
+                            +12%
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border border-border/20 bg-accent/10 hover:bg-accent/20 transition-colors">
+                      <CardContent className="p-4 flex flex-col">
+                        <p className="text-muted-foreground text-sm">Premium Users</p>
+                        <div className="flex items-end justify-between mt-2">
+                          <h3 className="text-3xl font-bold">{premiumUsers}</h3>
+                          <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center">
+                            <TrendingUpIcon className="h-3 w-3 mr-1" />
+                            +8%
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border border-border/20 bg-accent/10 hover:bg-accent/20 transition-colors">
+                      <CardContent className="p-4 flex flex-col">
+                        <p className="text-muted-foreground text-sm">Revenue</p>
+                        <div className="flex items-end justify-between mt-2">
+                          <h3 className="text-3xl font-bold">₹{revenue}</h3>
+                          <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center">
+                            <TrendingUpIcon className="h-3 w-3 mr-1" />
+                            +15%
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border border-border/20 bg-accent/10 hover:bg-accent/20 transition-colors">
+                      <CardContent className="p-4 flex flex-col">
+                        <p className="text-muted-foreground text-sm">Avg. Accuracy</p>
+                        <div className="flex items-end justify-between mt-2">
+                          <h3 className="text-3xl font-bold">{averageAccuracy}%</h3>
+                          <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 flex items-center">
+                            <TrendingUpIcon className="h-3 w-3 mr-1" />
+                            +5%
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+                
+                {/* More dashboard content would go here */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Recent Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isLoading ? (
+                        <div className="flex justify-center py-10">
+                          <LoadingSpinner size="md" text="Loading activity data..." />
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {displayedUsers.slice(0, 3).map((user) => (
+                            <div key={`activity-${user.id}`} className="flex items-center gap-3 border-b pb-3">
+                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                {user.name.charAt(0)}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">{user.name}</p>
+                                <p className="text-sm text-muted-foreground">Answered {user.questionsAnswered} questions</p>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date().toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">User Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isLoading ? (
+                        <div className="flex justify-center py-10">
+                          <LoadingSpinner size="md" text="Loading distribution data..." />
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Group users by exam type */}
+                          {Object.entries(
+                            displayedUsers.reduce((acc, user) => {
+                              acc[user.examType] = (acc[user.examType] || 0) + 1;
+                              return acc;
+                            }, {} as Record<string, number>)
+                          ).map(([examType, count]) => (
+                            <div key={examType} className="flex items-center gap-3">
+                              <div className="w-full">
+                                <div className="flex justify-between mb-1">
+                                  <span className="text-sm font-medium">{examType}</span>
+                                  <span className="text-sm text-muted-foreground">{count} users</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-2">
+                                  <div 
+                                    className="bg-primary rounded-full h-2" 
+                                    style={{ width: `${(count / displayedUsers.length) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="users" className="space-y-4">
+                <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UsersIcon className="h-5 w-5 text-primary" />
+                      User Management
+                    </CardTitle>
+                    <CardDescription>
+                      Manage user accounts and permissions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="flex justify-center py-10">
+                        <LoadingSpinner size="md" text="Loading user data..." />
+                      </div>
+                    ) : displayedUsers.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        No users found. Create some users to get started.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="py-2 px-3 text-left">Name</th>
+                              <th className="py-2 px-3 text-left">Email</th>
+                              <th className="py-2 px-3 text-left">Exam Type</th>
+                              <th className="py-2 px-3 text-left">Premium</th>
+                              <th className="py-2 px-3 text-left">Questions</th>
+                              <th className="py-2 px-3 text-left">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {displayedUsers.map((user) => (
+                              <tr key={user.id} className="border-b hover:bg-muted/50 transition-colors">
+                                <td className="py-3 px-3 font-medium">{user.name}</td>
+                                <td className="py-3 px-3">{user.email}</td>
+                                <td className="py-3 px-3">
+                                  <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
+                                    {user.examType}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3">
+                                  {user.isPremium ? (
+                                    <div className="flex items-center text-green-500">
+                                      <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                      <span>Yes</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center text-red-500">
+                                      <XCircleIcon className="h-4 w-4 mr-1" />
+                                      <span>No</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="flex flex-col">
+                                    <span>{user.questionsAnswered} answered</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {user.questionsCorrect} correct ({Math.round((user.questionsCorrect / Math.max(1, user.questionsAnswered)) * 100)}%)
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  {!user.isPremium && (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="flex items-center gap-1 text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
+                                      onClick={() => handleUpgradeUser(user.id)}
+                                    >
+                                      <BadgeIcon className="h-3 w-3" />
+                                      Upgrade to Premium
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="payments" className="space-y-4">
+                <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCardIcon className="h-5 w-5 text-primary" />
+                      Payment History
+                    </CardTitle>
+                    <CardDescription>
+                      View and manage payment transactions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="flex justify-center py-10">
+                        <LoadingSpinner size="md" text="Loading payment data..." />
+                      </div>
+                    ) : displayedUsers.filter(u => u.isPremium).length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        No payment records found. Upgrade users to premium to view payment history.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="py-2 px-3 text-left">ID</th>
+                              <th className="py-2 px-3 text-left">User</th>
+                              <th className="py-2 px-3 text-left">Amount</th>
+                              <th className="py-2 px-3 text-left">Date</th>
+                              <th className="py-2 px-3 text-left">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {displayedUsers.filter(u => u.isPremium).map((user, index) => (
+                              <tr key={`payment-${user.id}`} className="border-b hover:bg-muted/50 transition-colors">
+                                <td className="py-3 px-3">PAY-{100 + index}</td>
+                                <td className="py-3 px-3 font-medium">{user.name}</td>
+                                <td className="py-3 px-3">₹20.00</td>
+                                <td className="py-3 px-3">{new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td>
+                                <td className="py-3 px-3">
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                                    Completed
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="activity" className="space-y-4">
+                <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ActivityIcon className="h-5 w-5 text-primary" />
+                      User Activity
+                    </CardTitle>
+                    <CardDescription>
+                      Track user engagement and question statistics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading || displayedUsers.length === 0 ? (
+                      <div className="flex justify-center py-10">
+                        <LoadingSpinner size="md" text="Loading activity data..." />
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Card className="border border-border/20 bg-accent/10">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Total Questions Answered</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-3xl font-bold">{totalQuestionsAnswered}</div>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className="border border-border/20 bg-accent/10">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Average Accuracy</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-3xl font-bold">{averageAccuracy}%</div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <h3 className="font-medium">Recent User Activity</h3>
+                          {displayedUsers.map((user) => (
+                            <div key={`activity-detail-${user.id}`} className="border rounded-lg p-3 hover:bg-accent/5 transition-colors">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium">{user.name}</h4>
+                                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                                <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
+                                  {user.examType}
+                                </span>
+                              </div>
+                              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Questions Answered:</span>
+                                  <span className="font-medium ml-1">{user.questionsAnswered}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Correct Answers:</span>
+                                  <span className="font-medium ml-1">{user.questionsCorrect}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Accuracy:</span>
+                                  <span className="font-medium ml-1">
+                                    {user.questionsAnswered > 0 
+                                      ? `${Math.round((user.questionsCorrect / user.questionsAnswered) * 100)}%` 
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Account Type:</span>
+                                  <span className={`font-medium ml-1 ${user.isPremium ? 'text-green-500' : 'text-red-500'}`}>
+                                    {user.isPremium ? 'Premium' : 'Free'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </motion.div>
+          </AnimatePresence>
+        </Tabs>
       </div>
-      
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid grid-cols-4 mb-6">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2">
-            <BarChartIcon className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <UsersIcon className="h-4 w-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="payments" className="flex items-center gap-2">
-            <CreditCardIcon className="h-4 w-4" />
-            Payments
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2">
-            <ActivityIcon className="h-4 w-4" />
-            Activity
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="dashboard" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-              <CardDescription>Your platform at a glance</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg bg-accent/20">
-                <p className="text-muted-foreground text-sm">Total Users</p>
-                <h3 className="text-2xl font-bold">{displayedUsers.length}</h3>
-                <p className="text-green-500 text-xs mt-1">+12% this month</p>
-              </div>
-              <div className="p-4 border rounded-lg bg-accent/20">
-                <p className="text-muted-foreground text-sm">Premium Users</p>
-                <h3 className="text-2xl font-bold">{displayedUsers.filter(u => u.isPremium).length}</h3>
-                <p className="text-green-500 text-xs mt-1">+8% this month</p>
-              </div>
-              <div className="p-4 border rounded-lg bg-accent/20">
-                <p className="text-muted-foreground text-sm">Revenue</p>
-                <h3 className="text-2xl font-bold">₹{displayedUsers.filter(u => u.isPremium).length * 20}</h3>
-                <p className="text-green-500 text-xs mt-1">+15% this month</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="users" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Manage user accounts and permissions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-10">
-                  <LoadingSpinner size="md" text="Loading user data..." />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-2 px-3 text-left">Name</th>
-                        <th className="py-2 px-3 text-left">Email</th>
-                        <th className="py-2 px-3 text-left">Exam Type</th>
-                        <th className="py-2 px-3 text-left">Premium</th>
-                        <th className="py-2 px-3 text-left">Questions</th>
-                        <th className="py-2 px-3 text-left">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedUsers.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-muted/50">
-                          <td className="py-3 px-3">{user.name}</td>
-                          <td className="py-3 px-3">{user.email}</td>
-                          <td className="py-3 px-3">{user.examType}</td>
-                          <td className="py-3 px-3">
-                            {user.isPremium ? (
-                              <div className="flex items-center text-green-500">
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                <span>Yes</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center text-red-500">
-                                <XCircleIcon className="h-4 w-4 mr-1" />
-                                <span>No</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3 px-3">
-                            {user.questionsAnswered} / {user.questionsCorrect} correct
-                          </td>
-                          <td className="py-3 px-3">
-                            {!user.isPremium && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="flex items-center gap-1 text-xs"
-                                onClick={() => handleUpgradeUser(user.id)}
-                              >
-                                <BadgeIcon className="h-3 w-3" />
-                                Upgrade to Premium
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="payments" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
-              <CardDescription>View and manage payment transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="py-2 px-3 text-left">ID</th>
-                      <th className="py-2 px-3 text-left">User</th>
-                      <th className="py-2 px-3 text-left">Amount</th>
-                      <th className="py-2 px-3 text-left">Date</th>
-                      <th className="py-2 px-3 text-left">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedUsers.filter(u => u.isPremium).map((user, index) => (
-                      <tr key={`payment-${user.id}`} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-3">PAY-{100 + index}</td>
-                        <td className="py-3 px-3">{user.name}</td>
-                        <td className="py-3 px-3">₹20.00</td>
-                        <td className="py-3 px-3">{new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                            Completed
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="activity" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Activity</CardTitle>
-              <CardDescription>Track user engagement and question statistics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center py-10">
-                <LoadingSpinner size="md" text="Loading activity data..." />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </motion.div>
   );
 };
