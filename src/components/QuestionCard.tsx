@@ -9,22 +9,36 @@ import { useAppStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackUserActivity } from '@/services/api';
 
+// QuestionCardProps is now optional since we'll use the store directly
 interface QuestionCardProps {
-  question: Question;
+  question?: Question;
 }
 
-const QuestionCard = ({ question }: QuestionCardProps) => {
+const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
   const { 
     selectedOption, 
     selectOption, 
     submitAnswer, 
     nextQuestion, 
     showExplanation,
-    user
+    user,
+    currentQuestion: storeQuestion
   } = useAppStore();
+  
+  // Use the question from props if provided, otherwise use from store
+  const question = propQuestion || storeQuestion;
   
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  
+  // Guard against attempting to render when no question is available
+  if (!question) {
+    return (
+      <div className="w-full max-w-3xl mx-auto p-8 text-center">
+        <p className="text-muted-foreground">No question available. Please generate questions first.</p>
+      </div>
+    );
+  }
   
   useEffect(() => {
     // Reset state when question changes
