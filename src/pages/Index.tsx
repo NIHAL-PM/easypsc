@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,11 +25,11 @@ const Index = () => {
     questions,
     isLoading,
     setQuestions,
-    setCurrentQuestion
+    setCurrentQuestion,
+    askedQuestionIds
   } = useAppStore();
 
   useEffect(() => {
-    // Simulate initial page loading
     const timer = setTimeout(() => {
       setPageLoading(false);
     }, 1500);
@@ -38,7 +37,6 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Check URL params for admin page
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const adminParam = params.get('admin');
@@ -47,7 +45,6 @@ const Index = () => {
     }
   }, []);
   
-  // Load demo questions if user exists but no questions loaded
   useEffect(() => {
     const loadDemoQuestions = async () => {
       if (user && !currentQuestion && questions.length === 0 && !isLoading) {
@@ -55,7 +52,8 @@ const Index = () => {
           const demoQuestions = await generateQuestions({
             examType: user.examType,
             difficulty: 'medium',
-            count: 3
+            count: 3,
+            askedQuestionIds
           });
           
           if (demoQuestions.length > 0) {
@@ -69,9 +67,8 @@ const Index = () => {
     };
     
     loadDemoQuestions();
-  }, [user, currentQuestion, questions, isLoading, setQuestions, setCurrentQuestion]);
+  }, [user, currentQuestion, questions, isLoading, setQuestions, setCurrentQuestion, askedQuestionIds]);
   
-  // If page is loading, show loading spinner
   if (pageLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -86,17 +83,14 @@ const Index = () => {
     );
   }
   
-  // Show admin panel if admin mode
   if (isAdmin) {
     return <AdminPanel />;
   }
   
-  // Show premium upgrade page if upgrading
   if (isUpgrading) {
     return <PremiumUpgrade />;
   }
   
-  // Show user setup if no user
   if (!user) {
     return (
       <div className="container mx-auto px-4 max-w-5xl">

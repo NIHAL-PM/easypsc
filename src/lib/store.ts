@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Question, QuestionAttempt, UserStats } from '@/types';
@@ -11,6 +10,7 @@ interface AppState {
   isLoading: boolean;
   selectedOption: number | null;
   showExplanation: boolean;
+  askedQuestionIds: string[]; // New state to track asked question IDs
   
   // User actions
   setUser: (user: User) => void;
@@ -54,6 +54,7 @@ export const useAppStore = create<AppState>()(
       selectedOption: null,
       showExplanation: false,
       allUsers: [],
+      askedQuestionIds: [], // Initialize empty array for tracking asked questions
       
       setUser: (user) => {
         set({ user });
@@ -98,7 +99,14 @@ export const useAppStore = create<AppState>()(
         showExplanation: false
       }),
       
-      setQuestions: (questions) => set({ questions }),
+      setQuestions: (questions) => {
+        // Update askedQuestionIds with the IDs of the new questions
+        const newQuestionIds = questions.map(q => q.id);
+        set(state => ({
+          questions,
+          askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
+        }));
+      },
       
       setCurrentQuestion: (question) => set({ 
         currentQuestion: question,
@@ -206,6 +214,7 @@ export const useAppStore = create<AppState>()(
         user: state.user,
         questionHistory: state.questionHistory,
         allUsers: state.allUsers,
+        askedQuestionIds: state.askedQuestionIds, // Add askedQuestionIds to persisted state
       }),
     }
   )

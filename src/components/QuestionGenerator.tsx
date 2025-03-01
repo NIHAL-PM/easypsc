@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,14 @@ import { motion } from 'framer-motion';
 import { Loader2Icon } from 'lucide-react';
 
 const QuestionGenerator = () => {
-  const { user, setQuestions, setCurrentQuestion, setIsLoading, isLoading } = useAppStore();
+  const { 
+    user, 
+    setQuestions, 
+    setCurrentQuestion, 
+    setIsLoading, 
+    isLoading, 
+    askedQuestionIds 
+  } = useAppStore();
   const { toast } = useToast();
   
   const [difficulty, setDifficulty] = useState('medium');
@@ -44,7 +50,8 @@ const QuestionGenerator = () => {
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
         difficulty,
-        count
+        count,
+        askedQuestionIds // Pass the IDs of questions that have already been asked
       });
       
       setQuestions(generatedQuestions);

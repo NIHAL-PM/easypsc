@@ -1,27 +1,32 @@
 
 import { Question, ExamType } from '@/types';
+import { useAppStore } from '@/lib/store';
 
 // Google Gemini API configuration
 const API_KEY = "AIzaSyD4p5YZyQbQRDgu37WqIEl7QSXBn1O3p6s";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
 
 interface GenerateQuestionsParams {
   examType: ExamType;
   difficulty: string;
   count: number;
   category?: string;
+  askedQuestionIds?: string[]; // Added parameter to track already asked questions
 }
 
 export async function generateQuestions({
   examType,
   difficulty,
   count,
-  category
+  category,
+  askedQuestionIds = []
 }: GenerateQuestionsParams): Promise<Question[]> {
   try {
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
     ${category ? `Category: ${category}.` : ''}
+    
+    Important: Generate completely new and unique questions that have not been used before.
     
     Format each question with:
     1. Question text
@@ -60,6 +65,7 @@ export async function generateQuestions({
     });
 
     if (!response.ok) {
+      console.error(`API request failed with status: ${response.status}`);
       throw new Error(`API request failed with status: ${response.status}`);
     }
 
@@ -68,31 +74,57 @@ export async function generateQuestions({
     // Extract the text from the response
     const text = data.candidates[0].content.parts[0].text;
     
-    // Find the JSON part in the text (assuming the model returns valid JSON)
+    // Find the JSON part in the text
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       // Fallback to mock data if no JSON found
-      return getMockQuestions(examType, difficulty, count);
+      return getMockQuestions(examType, difficulty, count, askedQuestionIds);
     }
     
-    const questionsJson = JSON.parse(jsonMatch[0]);
-    
-    // Ensure each question has an id
-    return questionsJson.map((q: any, index: number) => ({
-      ...q,
-      id: q.id || `q-${Date.now()}-${index}`,
-    }));
+    try {
+      const questionsJson = JSON.parse(jsonMatch[0]);
+      
+      // Ensure each question has an id and filter out any questions that have been asked before
+      const newQuestions = questionsJson
+        .map((q: any, index: number) => ({
+          ...q,
+          id: q.id || `q-${Date.now()}-${index}`,
+        }))
+        .filter((q: Question) => !askedQuestionIds.includes(q.id));
+      
+      // If we don't have enough new questions, generate more
+      if (newQuestions.length < count) {
+        console.log("Not enough unique questions, generating more...");
+        const moreQuestions = await getMockQuestions(
+          examType, 
+          difficulty, 
+          count - newQuestions.length, 
+          [...askedQuestionIds, ...newQuestions.map(q => q.id)]
+        );
+        return [...newQuestions, ...moreQuestions];
+      }
+      
+      return newQuestions;
+    } catch (parseError) {
+      console.error("Error parsing JSON from API response:", parseError);
+      return getMockQuestions(examType, difficulty, count, askedQuestionIds);
+    }
     
   } catch (error) {
     console.error("Error generating questions:", error);
     // Return mock questions as fallback
-    return getMockQuestions(examType, difficulty, count);
+    return getMockQuestions(examType, difficulty, count, askedQuestionIds);
   }
 }
 
 // Mock questions for fallback
-function getMockQuestions(examType: ExamType, difficulty: string, count: number): Question[] {
-  const mockQuestions: Question[] = [
+function getMockQuestions(
+  examType: ExamType, 
+  difficulty: string, 
+  count: number, 
+  askedQuestionIds: string[] = []
+): Question[] {
+  const allMockQuestions: Question[] = [
     {
       id: "q1",
       text: "Which article of the Indian Constitution abolishes untouchability?",
@@ -165,7 +197,29 @@ function getMockQuestions(examType: ExamType, difficulty: string, count: number)
     }
   ];
   
-  return mockQuestions.slice(0, count);
+  // Filter out questions that have already been asked
+  const availableQuestions = allMockQuestions.filter(
+    q => !askedQuestionIds.includes(q.id)
+  );
+  
+  // If we need more questions than available, generate some with unique IDs
+  if (availableQuestions.length < count) {
+    const additionalQuestions: Question[] = [];
+    
+    for (let i = 0; i < count - availableQuestions.length; i++) {
+      // Copy a question but give it a new ID
+      const baseQuestion = allMockQuestions[i % allMockQuestions.length];
+      additionalQuestions.push({
+        ...baseQuestion,
+        id: `q-${Date.now()}-${i}`,
+        text: `${baseQuestion.text} (variant ${i+1})` // Slightly modify the question
+      });
+    }
+    
+    return [...availableQuestions, ...additionalQuestions].slice(0, count);
+  }
+  
+  return availableQuestions.slice(0, count);
 }
 
 // User tracking functionality
