@@ -31,6 +31,11 @@ interface AppState {
   
   // Stats
   getUserStats: () => UserStats;
+  
+  // Admin actions
+  allUsers: User[];
+  addUser: (user: User) => void;
+  upgradeUserToPremium: (userId: string) => void;
 }
 
 // Generate a unique user ID if not already present
@@ -48,11 +53,20 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       selectedOption: null,
       showExplanation: false,
+      allUsers: [],
       
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        set({ user });
+        
+        // Also add this user to allUsers if not already there
+        const { allUsers } = get();
+        if (!allUsers.some(u => u.id === user.id)) {
+          set({ allUsers: [...allUsers, user] });
+        }
+      },
       
       updateUserStats: (attempt) => {
-        const { user } = get();
+        const { user, allUsers } = get();
         
         if (!user) return;
         
@@ -63,8 +77,14 @@ export const useAppStore = create<AppState>()(
           monthlyQuestionsRemaining: user.isPremium ? user.monthlyQuestionsRemaining : user.monthlyQuestionsRemaining - 1
         };
         
+        // Update both the current user and in the all users array
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === updatedUser.id ? updatedUser : u
+        );
+        
         set({ 
           user: updatedUser,
+          allUsers: updatedAllUsers,
           questionHistory: [...get().questionHistory, attempt]
         });
       },
@@ -152,6 +172,32 @@ export const useAppStore = create<AppState>()(
           accuracyPercentage,
           categoryBreakdown
         };
+      },
+      
+      // Admin actions
+      addUser: (user) => {
+        const { allUsers } = get();
+        set({ allUsers: [...allUsers, user] });
+      },
+      
+      upgradeUserToPremium: (userId) => {
+        const { allUsers, user } = get();
+        
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === userId 
+            ? { ...u, isPremium: true, monthlyQuestionsRemaining: 999 } 
+            : u
+        );
+        
+        // Also update the current user if they're the one being upgraded
+        const updatedCurrentUser = user && user.id === userId 
+          ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 }
+          : user;
+        
+        set({ 
+          allUsers: updatedAllUsers,
+          user: updatedCurrentUser
+        });
       }
     }),
     {
@@ -159,6 +205,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         user: state.user,
         questionHistory: state.questionHistory,
+        allUsers: state.allUsers,
       }),
     }
   )
