@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
-import { Radio, RadioGroupItem, RadioGroup } from '@/components/ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { Loader2Icon } from 'lucide-react';
 

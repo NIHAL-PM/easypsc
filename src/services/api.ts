@@ -2,7 +2,7 @@
 import { Question, ExamType } from '@/types';
 
 // Google Gemini API configuration
-const API_KEY = "AIzaSyD4p5YZyQRDgu37WqIEl7QSXBn1O3p6s";
+const API_KEY = "AIzaSyD4p5YZyQbQRDgu37WqIEl7QSXBn1O3p6s";
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
 interface GenerateQuestionsParams {
