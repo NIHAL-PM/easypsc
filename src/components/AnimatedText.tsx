@@ -41,7 +41,16 @@ const AnimatedText = ({
       <motion.div
         key={examTypes[currentExamType]}
         initial={{ opacity: 0, y: direction === 'vertical' ? 20 : 0, x: direction === 'horizontal' ? 20 : 0 }}
-        animate={{ opacity: 1, y: 0, x: 0 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0, 
+          x: 0,
+          transition: {
+            type: "spring",
+            stiffness: 260,
+            damping: 20
+          }
+        }}
         exit={{ opacity: 0, y: direction === 'vertical' ? -20 : 0, x: direction === 'horizontal' ? -20 : 0 }}
         transition={{ duration: 0.3 }}
         className={textClassName}

@@ -31,9 +31,15 @@ const LoadingSpinner = ({
   return (
     <div className="flex flex-col items-center justify-center">
       <motion.div
-        className={`${sizeMap[size]} rounded-full border-4 ${colorMap[color as keyof typeof colorMap]}`}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        className={`${sizeMap[size]} rounded-full border-4 ${colorMap[color as keyof typeof colorMap]} shadow-[0_0_15px_rgba(0,0,0,0.1)]`}
+        animate={{ 
+          rotate: 360,
+          boxShadow: ["0 0 5px rgba(124, 58, 237, 0.5)", "0 0 20px rgba(236, 72, 153, 0.7)", "0 0 5px rgba(124, 58, 237, 0.5)"]
+        }}
+        transition={{ 
+          rotate: { duration: 1.5, repeat: Infinity, ease: "linear" },
+          boxShadow: { duration: 2, repeat: Infinity, repeatType: "reverse" }
+        }}
       />
       
       {text && !useAnimatedText && (
@@ -51,10 +57,11 @@ const LoadingSpinner = ({
         <div className="mt-3">
           <AnimatedText 
             prefix="Loading" 
+            examTypes={[".", "..", "..."]}
             className="flex items-center justify-center" 
             prefixClassName="text-muted-foreground text-sm"
             textClassName="ml-1 text-sm font-medium text-primary"
-            interval={2000}
+            interval={600}
           />
         </div>
       )}

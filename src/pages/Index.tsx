@@ -45,7 +45,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setPageLoading(false);
-    }, 1500);
+    }, 2500); // Extended to 2.5s to showcase the loading animation
     
     return () => clearTimeout(timer);
   }, []);
@@ -89,13 +89,32 @@ const Index = () => {
   
   if (pageLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+        {/* Video Background with overlay */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10 z-10"></div>
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            className="absolute w-full h-full object-cover opacity-20"
+          >
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-network-connection-loop-animation-7295-large.mp4" type="video/mp4" />
+          </video>
+        </div>
+        
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
+          className="z-10 backdrop-blur-lg bg-background/60 p-10 rounded-xl shadow-lg border border-primary/20"
         >
-          <LoadingSpinner size="lg" text="Loading EasyPSC..." useAnimatedText={true} />
+          <div className="relative">
+            <AnimatedLogo />
+            <div className="mt-8">
+              <LoadingSpinner size="lg" color="primary" useAnimatedText={true} />
+            </div>
+          </div>
         </motion.div>
       </div>
     );
@@ -106,7 +125,7 @@ const Index = () => {
   }
   
   if (isUpgrading) {
-    return <PremiumUpgrade onCancel={() => setIsUpgrading(false)} />;
+    return <PremiumUpgrade onClose={() => setIsUpgrading(false)} />;
   }
   
   if (!user) {
