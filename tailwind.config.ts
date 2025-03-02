@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -104,6 +103,24 @@ export default {
 				pulse: {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.5' }
+				},
+				float: {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' }
+				},
+				breathe: {
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.05)' }
+				},
+				wave: {
+					'0%': { transform: 'translateX(0) translateY(0)' },
+					'50%': { transform: 'translateX(10px) translateY(-5px)' },
+					'100%': { transform: 'translateX(0) translateY(0)' }
+				},
+				liquidMove: {
+					'0%': { borderRadius: '60% 40% 30% 70%/60% 30% 70% 40%' },
+					'50%': { borderRadius: '30% 60% 70% 40%/50% 60% 30% 60%' },
+					'100%': { borderRadius: '60% 40% 30% 70%/60% 30% 70% 40%' }
 				}
 			},
 			animation: {
@@ -112,7 +129,18 @@ export default {
 				'fade-in': 'fadeIn 0.5s ease-out',
 				'slide-up': 'slideUp 0.5s ease-out',
 				'slide-down': 'slideDown 0.5s ease-out',
-				'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+				'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'float': 'float 6s ease-in-out infinite',
+				'breathe': 'breathe 8s ease-in-out infinite',
+				'wave': 'wave 10s ease-in-out infinite',
+				'liquid': 'liquidMove 10s ease-in-out infinite'
+			},
+			backgroundImage: {
+				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+				'gradient-primary': 'linear-gradient(90deg, hsla(240, 100%, 70%, 1) 0%, hsla(277, 75%, 84%, 1) 50%, hsla(297, 50%, 51%, 1) 100%)',
+				'gradient-secondary': 'linear-gradient(90deg, hsla(39, 100%, 77%, 1) 0%, hsla(22, 90%, 57%, 1) 100%)',
+				'gradient-accent': 'linear-gradient(90deg, hsla(46, 73%, 75%, 1) 0%, hsla(176, 73%, 88%, 1) 100%)',
+				'gradient-hero': 'linear-gradient(90deg, hsla(221, 45%, 73%, 1) 0%, hsla(220, 78%, 29%, 1) 100%)',
 			}
 		}
 	},

@@ -1,8 +1,9 @@
+
 #root {
-  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
+  min-height: 100vh;
+  width: 100%;
 }
 
 .logo {
@@ -11,9 +12,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -39,4 +42,53 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Gradient background elements */
+.gradient-blob {
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  background-size: 300% 300%;
+  animation: gradient-shift 10s ease infinite, blob-morph 25s ease-in-out infinite;
+  position: absolute;
+  filter: blur(30px);
+  z-index: -1;
+  opacity: 0.5;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes blob-morph {
+  0% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+  25% {
+    border-radius: 50% 50% 30% 70% / 60% 40% 60% 40%;
+  }
+  50% {
+    border-radius: 70% 30% 50% 50% / 40% 60% 40% 60%;
+  }
+  75% {
+    border-radius: 30% 70% 70% 30% / 60% 40% 60% 40%;
+  }
+  100% {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
