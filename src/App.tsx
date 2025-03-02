@@ -3,13 +3,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PremiumUpgrade from "./components/PremiumUpgrade";
 import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
+import { useAppStore } from "./lib/store";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,6 +22,17 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// User auth check component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAppStore();
+  
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 // Check for API key
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -68,7 +80,11 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/premium" element={<PremiumUpgrade />} />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

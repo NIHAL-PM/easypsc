@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { CrownIcon, LineChart } from 'lucide-react';
+import { CrownIcon, LineChart, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ProfileCard = () => {
   const { user, getUserStats } = useAppStore();
+  const navigate = useNavigate();
   
   if (!user) return null;
   
@@ -65,7 +67,12 @@ const ProfileCard = () => {
                   <p className="text-xs text-muted-foreground mb-2">
                     You have <span className="font-semibold">{questionsRemaining}</span> questions remaining this month.
                   </p>
-                  <Button variant="outline" size="sm" className="w-full bg-white dark:bg-black text-xs border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-amber-950">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full bg-white dark:bg-black text-xs border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-amber-950"
+                    onClick={() => navigate("/premium")}
+                  >
                     Upgrade to Premium
                   </Button>
                 </div>
@@ -73,10 +80,19 @@ const ProfileCard = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button variant="outline" className="w-full" size="sm">
             <LineChart className="w-4 h-4 mr-2" />
             View Detailed Stats
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="w-full" 
+            size="sm"
+            onClick={() => navigate("/admin")}
+          >
+            <ArrowRight className="w-4 h-4 mr-2" />
+            Admin Panel
           </Button>
         </CardFooter>
       </Card>

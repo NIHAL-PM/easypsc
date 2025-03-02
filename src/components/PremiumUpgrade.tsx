@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { Card } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
+import { useToast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2Icon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 
@@ -14,30 +13,19 @@ interface PremiumUpgradeProps {
 }
 
 const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
-  const { user, setUser } = useAppStore();
+  const { user, upgradeUserToPremium } = useAppStore();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [nameOnCard, setNameOnCard] = useState('');
+  const navigate = useNavigate();
   
-  if (!user) return null;
-  
-  // Don't show if already premium
-  if (user.isPremium && !isSuccess) return null;
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!cardNumber || !expiryDate || !cvv || !nameOnCard) {
+  const handleUpgrade = () => {
+    if (!user) {
       toast({
-        title: 'Invalid form',
-        description: 'Please fill in all the payment details',
-        variant: 'destructive'
+        title: "Error",
+        description: "You need to be logged in to upgrade.",
+        variant: "destructive"
       });
+      navigate('/');
       return;
     }
     
@@ -45,162 +33,101 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
     
     // Simulate payment processing
     setTimeout(() => {
-      // Update user to premium
-      setUser({
-        ...user,
-        isPremium: true
-      });
+      upgradeUserToPremium(user.id);
       
       setIsProcessing(false);
-      setIsSuccess(true);
       
       toast({
-        title: 'Payment successful',
-        description: 'Welcome to Premium! You now have unlimited access.',
+        title: "Upgrade Successful!",
+        description: "You now have access to premium features.",
       });
+      
+      if (onClose) {
+        onClose();
+      } else {
+        navigate('/');
+      }
     }, 2000);
   };
   
-  if (isSuccess) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md mx-auto mt-10"
-      >
-        <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
-          <CardHeader className="pb-6 pt-8 text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
-              className="mx-auto mb-4 bg-green-100 w-16 h-16 flex items-center justify-center rounded-full"
-            >
-              <CheckCircle2Icon className="h-8 w-8 text-green-600" />
-            </motion.div>
-            <CardTitle className="text-2xl">Upgrade Complete!</CardTitle>
-            <CardDescription>
-              You are now a premium member with unlimited access
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center pb-8">
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-muted-foreground"
-            >
-              Thank you for supporting EasyPSC. Enjoy unlimited questions, personalized analytics, and more!
-            </motion.p>
-          </CardContent>
-        </Card>
-      </motion.div>
-    );
-  }
+  const handleGoBack = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/');
+    }
+  };
   
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-md mx-auto mt-10"
+      className="container mx-auto py-12 px-4 max-w-md"
     >
-      <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl">Upgrade to Premium</CardTitle>
-          <CardDescription>
-            Get unlimited questions for just ₹20/month
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg bg-accent/20 p-4 mb-4">
-            <h3 className="font-medium mb-2">Premium Benefits</h3>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                <span>Unlimited questions every month</span>
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                <span>Personalized performance analytics</span>
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                <span>Access to all difficulty levels</span>
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-                <span>No ads or interruptions</span>
-              </li>
-            </ul>
-          </div>
+      <Card className="bg-card/95 backdrop-blur-sm border border-border/40 shadow-lg overflow-hidden">
+        <div className="p-6">
+          <h2 className="text-2xl font-semibold text-center mb-4">
+            Upgrade to Premium
+          </h2>
+          <p className="text-muted-foreground text-center mb-6">
+            Unlock unlimited access to all features and content.
+          </p>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name on Card</Label>
-              <Input 
-                id="name" 
-                placeholder="John Smith"
-                value={nameOnCard}
-                onChange={(e) => setNameOnCard(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="card">Card Number</Label>
-              <Input 
-                id="card" 
-                placeholder="4242 4242 4242 4242"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiry">Expiry Date</Label>
-                <Input 
-                  id="expiry" 
-                  placeholder="MM/YY"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  required
-                />
+          <div className="space-y-4">
+            {/* Pricing Card */}
+            <div className="border rounded-lg p-4 bg-secondary/50 border-secondary/50">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-medium">Premium Plan</h3>
+                <Badge variant="secondary">Most Popular</Badge>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvv">CVV</Label>
-                <Input 
-                  id="cvv" 
-                  placeholder="123"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                  required
-                />
-              </div>
+              <p className="text-muted-foreground text-sm mb-4">
+                Unlimited questions, detailed analytics, and priority support.
+              </p>
+              <div className="text-2xl font-bold">$9.99/month</div>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mt-3">
+                <li>Unlimited question generation</li>
+                <li>Detailed performance analytics</li>
+                <li>Priority customer support</li>
+                <li>Ad-free experience</li>
+              </ul>
+              <Button 
+                className="w-full mt-4" 
+                onClick={handleUpgrade}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Upgrade Now"
+                )}
+              </Button>
             </div>
             
-            <Button 
-              type="submit"
-              className="w-full mt-6"
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>Pay ₹20 - Upgrade Now</>
-              )}
+            {/* Confirmation/Error Message */}
+            {isProcessing && (
+              <div className="text-center text-muted-foreground">
+                <Loader2Icon className="inline-block mr-2 h-5 w-5 animate-spin" />
+                Processing your upgrade...
+              </div>
+            )}
+            
+            {user && user.isPremium && (
+              <div className="text-center text-green-500">
+                <CheckCircle2Icon className="inline-block mr-2 h-5 w-5" />
+                You are already a premium member!
+              </div>
+            )}
+            
+            {/* Back Button */}
+            <Button variant="ghost" className="w-full" onClick={handleGoBack}>
+              Go Back
             </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-center pt-0">
-          <p className="text-xs text-muted-foreground">
-            Your payment information is securely processed. Cancel anytime.
-          </p>
-        </CardFooter>
+          </div>
+        </div>
       </Card>
     </motion.div>
   );

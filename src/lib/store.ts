@@ -96,7 +96,8 @@ export const useAppStore = create<AppState>()(
         questionHistory: [],
         questions: [],
         selectedOption: null,
-        showExplanation: false
+        showExplanation: false,
+        askedQuestionIds: [] // Clear asked questions when logging out
       }),
       
       setQuestions: (questions) => {
@@ -183,6 +184,7 @@ export const useAppStore = create<AppState>()(
       },
       
       // Admin actions
+      allUsers: [],
       addUser: (user) => {
         const { allUsers } = get();
         set({ allUsers: [...allUsers, user] });

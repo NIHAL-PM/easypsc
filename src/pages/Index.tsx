@@ -13,7 +13,7 @@ import AdminPanel from '@/components/AdminPanel';
 import PremiumUpgrade from '@/components/PremiumUpgrade';
 import { generateQuestions } from '@/services/api';
 import { motion } from 'framer-motion';
-import { Menu, Bell, HelpCircle, Info } from 'lucide-react';
+import { Menu, Bell, HelpCircle, Info, LogOut } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('practice');
@@ -31,6 +32,7 @@ const Index = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const { 
     user, 
@@ -39,7 +41,8 @@ const Index = () => {
     isLoading,
     setQuestions,
     setCurrentQuestion,
-    askedQuestionIds
+    askedQuestionIds,
+    logout
   } = useAppStore();
 
   useEffect(() => {
@@ -137,6 +140,16 @@ const Index = () => {
     );
   }
   
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out"
+    });
+    // Force reload to clear any lingering state
+    window.location.reload();
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 pb-16">
       {/* Header */}
@@ -213,13 +226,15 @@ const Index = () => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                  toast({
-                    title: "Logged out",
-                    description: "You have been successfully logged out"
-                  });
-                  window.location.reload();
-                }}>
+                <DropdownMenuItem onClick={() => navigate("/admin")}>
+                  <span>Admin Panel</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/premium")}>
+                  <span>Premium Page</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
