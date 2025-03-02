@@ -24,6 +24,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { useAppStore } from '@/lib/store';
 import { User, ExamType } from '@/types';
 import AnimatedText from './AnimatedText';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const AdminPanel = () => {
   const { toast } = useToast();
@@ -34,6 +35,7 @@ const AdminPanel = () => {
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [displayedUsers, setDisplayedUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   
   const { allUsers, upgradeUserToPremium, addUser } = useAppStore();
   
@@ -44,6 +46,7 @@ const AdminPanel = () => {
     setTimeout(() => {
       if (username === 'bluewaterbottle' && password === 'waterbottle') {
         setIsLoggedIn(true);
+        setLoginDialogOpen(false);
         toast({
           title: 'Login successful',
           description: 'Welcome to the admin panel',
@@ -111,6 +114,7 @@ const AdminPanel = () => {
           transition={{ duration: 0.5 }}
           className="max-w-md w-full mx-auto px-4"
         >
+          {/* Login Button and Dialog for Mobile */}
           <Card className="overflow-hidden border-2 border-primary/10 shadow-lg bg-card/95 backdrop-blur-sm rounded-xl">
             <CardHeader className="pb-2 space-y-1">
               <motion.div 
@@ -127,44 +131,103 @@ const AdminPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="username">Username</Label>
-                <Input 
-                  id="username" 
-                  value={username} 
-                  onChange={(e) => setUsername(e.target.value)} 
-                  placeholder="Enter username"
-                  className="border-input/60 focus:border-primary"
-                />
-              </motion.div>
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="Enter password"
-                  className="border-input/60 focus:border-primary"
-                />
-              </motion.div>
+              <div className="block md:hidden">
+                <Button 
+                  onClick={() => setLoginDialogOpen(true)} 
+                  className="w-full bg-gradient-to-r from-primary/90 to-primary shadow-md"
+                >
+                  Login
+                </Button>
+                
+                <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Admin Login</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="username-mobile">Username</Label>
+                        <Input 
+                          id="username-mobile" 
+                          value={username} 
+                          onChange={(e) => setUsername(e.target.value)} 
+                          placeholder="Enter username"
+                          className="border-input/60 focus:border-primary"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password-mobile">Password</Label>
+                        <Input 
+                          id="password-mobile" 
+                          type="password" 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          placeholder="Enter password"
+                          className="border-input/60 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        onClick={handleLogin} 
+                        className="w-full bg-gradient-to-r from-primary/90 to-primary shadow-md"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                            Logging in...
+                          </>
+                        ) : (
+                          <>Login</>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              {/* Desktop Login Form */}
+              <div className="hidden md:block space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="space-y-2"
+                >
+                  <Label htmlFor="username">Username</Label>
+                  <Input 
+                    id="username" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)} 
+                    placeholder="Enter username"
+                    className="border-input/60 focus:border-primary"
+                  />
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="space-y-2"
+                >
+                  <Label htmlFor="password">Password</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    placeholder="Enter password"
+                    className="border-input/60 focus:border-primary"
+                  />
+                </motion.div>
+              </div>
             </CardContent>
             <CardFooter>
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="w-full"
+                className="w-full hidden md:block"
               >
                 <Button 
                   onClick={handleLogin} 
