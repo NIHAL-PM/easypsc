@@ -9,7 +9,11 @@ import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
 import { Loader2Icon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 
-const PremiumUpgrade = () => {
+interface PremiumUpgradeProps {
+  onClose?: () => void;
+}
+
+const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
   const { user, setUser } = useAppStore();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
