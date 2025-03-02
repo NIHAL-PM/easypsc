@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Question, QuestionAttempt, UserStats } from '@/types';
@@ -184,7 +185,6 @@ export const useAppStore = create<AppState>()(
       },
       
       // Admin actions
-      allUsers: [],
       addUser: (user) => {
         const { allUsers } = get();
         set({ allUsers: [...allUsers, user] });
