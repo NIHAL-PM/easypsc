@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -48,7 +47,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setPageLoading(false);
-    }, 2500); // Extended to 2.5s to showcase the loading animation
+    }, 2500);
     
     return () => clearTimeout(timer);
   }, []);
@@ -96,33 +95,20 @@ const Index = () => {
       title: "Logged out",
       description: "You have been successfully logged out"
     });
-    // Force reload to clear any lingering state
     window.location.reload();
   };
   
   if (pageLoading) {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Liquid gradient background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 z-10"></div>
-          <div className="absolute top-1/4 left-1/4 w-1/2 h-1/2 bg-gradient-primary opacity-10 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-1/3 h-1/3 bg-gradient-secondary opacity-10 rounded-full blur-3xl animate-float" style={{ animationDelay: '-2s' }}></div>
-        </div>
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="z-10 backdrop-blur-lg bg-background/60 p-8 md:p-10 rounded-xl shadow-lg border border-primary/20 max-w-sm"
-        >
+      <div className="relative min-h-screen flex flex-col items-center justify-center">
+        <div className="backdrop-blur-lg bg-background/60 p-8 rounded-xl shadow-lg border border-primary/20 max-w-sm">
           <div className="relative">
             <AnimatedLogo />
-            <div className="mt-8">
+            <div className="mt-6">
               <LoadingSpinner size="lg" color="primary" useAnimatedText={true} />
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -145,15 +131,14 @@ const Index = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 pb-20">
-      {/* Header with liquid gradient border */}
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 pb-24">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between px-4 max-w-5xl mx-auto">
-          <div className="flex items-center gap-2">
+        <div className="container flex h-14 items-center justify-between px-4 max-w-5xl mx-auto">
+          <div className="flex items-center">
             <Button 
               variant="ghost" 
-              size="icon" 
-              className="md:hidden" 
+              size="sm"
+              className="md:hidden mr-2" 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               <Menu className="h-5 w-5" />
@@ -161,9 +146,12 @@ const Index = () => {
             <div className="hidden sm:block">
               <AnimatedLogo />
             </div>
+            <div className="sm:hidden">
+              <h2 className="text-lg font-semibold">EasyPSC</h2>
+            </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -189,31 +177,11 @@ const Index = () => {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <HelpCircle className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-sm border border-border/40">
-                <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toast({ title: "FAQs", description: "Frequently asked questions section coming soon." })}>
-                  <Info className="mr-2 h-4 w-4" />
-                  <span>FAQs</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast({ title: "Contact Support", description: "Support team is available 24/7." })}>
-                  <Info className="mr-2 h-4 w-4" />
-                  <span>Contact Support</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2 flex items-center">
                   <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 flex items-center justify-center text-primary">
-                    {user.name.charAt(0)}
+                    {user?.name?.charAt(0)}
                   </div>
-                  <span className="hidden md:inline-block">{user.name}</span>
+                  <span className="hidden md:inline-block">{user?.name}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-sm border border-border/40">
@@ -223,7 +191,7 @@ const Index = () => {
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                {!user.isPremium && (
+                {user && !user.isPremium && (
                   <DropdownMenuItem onClick={() => setIsUpgrading(true)}>
                     <span>Upgrade to Premium</span>
                   </DropdownMenuItem>
@@ -233,10 +201,6 @@ const Index = () => {
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Admin Panel</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/premium")}>
-                  <span>Premium Page</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
@@ -247,42 +211,42 @@ const Index = () => {
         </div>
       </header>
       
-      <div className="container mx-auto px-4 pt-6 max-w-5xl">
-        {/* Mobile menu with animation */}
+      <div className="container mx-auto px-4 pt-4 max-w-5xl">
         {isMobileMenuOpen && (
           <motion.div 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden mb-6 bg-card/95 backdrop-blur-sm rounded-lg border border-border/40 overflow-hidden"
+            className="md:hidden mb-4 bg-card/95 backdrop-blur-sm rounded-lg border border-border/40 overflow-hidden"
           >
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1">
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-2" 
+                className="w-full justify-start text-sm gap-2" 
                 onClick={() => {
                   setActiveTab('practice');
                   setIsMobileMenuOpen(false);
                 }}
               >
-                <Home size={18} />
+                <Home size={16} />
                 Practice
               </Button>
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-2" 
+                className="w-full justify-start text-sm gap-2" 
                 onClick={() => {
                   setActiveTab('profile');
                   setIsMobileMenuOpen(false);
                 }}
               >
-                <User size={18} />
+                <User size={16} />
                 Profile
               </Button>
-              {!user.isPremium && (
+              {user && !user.isPremium && (
                 <Button 
                   variant="gradient" 
-                  className="w-full mt-2" 
+                  size="sm"
+                  className="w-full mt-1" 
                   onClick={() => {
                     setIsUpgrading(true);
                     setIsMobileMenuOpen(false);
@@ -295,38 +259,38 @@ const Index = () => {
           </motion.div>
         )}
         
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <Tabs 
             value={activeTab} 
             onValueChange={setActiveTab} 
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 sticky top-[5rem] z-10 bg-background/60 backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-2 sticky top-[3.5rem] z-10 bg-background/60 backdrop-blur-sm">
               <TabsTrigger value="practice">Practice</TabsTrigger>
               <TabsTrigger value="profile">Profile</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="practice" className="space-y-6 mt-6">
-              {!user.isPremium && user.monthlyQuestionsRemaining < 5 && (
+            <TabsContent value="practice" className="space-y-4 mt-4">
+              {user && !user.isPremium && user.monthlyQuestionsRemaining < 5 && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="mb-4 p-4 bg-gradient-to-r from-amber-500/10 to-red-500/10 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3"
+                  className="mb-3 p-3 bg-gradient-to-r from-amber-500/10 to-red-500/10 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2"
                 >
                   <div>
-                    <h3 className="font-medium text-center sm:text-left">Limited questions remaining</h3>
-                    <p className="text-sm text-muted-foreground text-center sm:text-left">
+                    <h3 className="font-medium text-center sm:text-left text-sm">Limited questions remaining</h3>
+                    <p className="text-xs text-muted-foreground text-center sm:text-left">
                       You have {user.monthlyQuestionsRemaining} questions left this month
                     </p>
                   </div>
-                  <Button onClick={() => setIsUpgrading(true)} variant="gradient-secondary">
+                  <Button onClick={() => setIsUpgrading(true)} variant="gradient-secondary" size="sm">
                     Upgrade to Premium
                   </Button>
                 </motion.div>
               )}
               
-              <div className="bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg p-4 liquid-card">
+              <div className="bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg p-3 p-mobile-4">
                 <QuestionGenerator />
               </div>
               
@@ -338,8 +302,6 @@ const Index = () => {
                   transition={{ duration: 0.3, delay: 0.1 }}
                   className="relative"
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-primary opacity-[0.03] rounded-full blur-xl -z-10"></div>
-                  <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-secondary opacity-[0.03] rounded-full blur-xl -z-10"></div>
                   <QuestionCard />
                 </motion.div>
               ) : (
@@ -347,53 +309,41 @@ const Index = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex flex-col items-center justify-center py-10 bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg"
+                  className="flex flex-col items-center justify-center py-8 bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg"
                 >
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-4 text-sm">
                     No questions loaded. Generate some questions to start practicing!
                   </p>
-                  <Button variant="gradient" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                  <Button variant="gradient" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                     Generate Questions
                   </Button>
                 </motion.div>
               )}
             </TabsContent>
             
-            <TabsContent value="profile" className="mt-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="relative"
-              >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-primary opacity-[0.03] rounded-full blur-xl -z-10"></div>
-                <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-secondary opacity-[0.03] rounded-full blur-xl -z-10"></div>
-                
-                <ProfileCard />
-                
-                {!user.isPremium && (
-                  <div className="mt-6">
-                    <Button 
-                      onClick={() => setIsUpgrading(true)} 
-                      variant="gradient"
-                      size="mobile-full"
-                      className="w-full animate-pulse"
-                    >
-                      Upgrade to Premium
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
+            <TabsContent value="profile" className="mt-4">
+              <ProfileCard />
+              
+              {user && !user.isPremium && (
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => setIsUpgrading(true)} 
+                    variant="gradient"
+                    className="w-full"
+                  >
+                    Upgrade to Premium
+                  </Button>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
       </div>
       
-      {/* Footer with gradient border */}
-      <footer className="fixed bottom-0 left-0 right-0 border-t border-border/40 bg-card/95 backdrop-blur-sm py-2 px-4 text-center text-sm text-muted-foreground z-10">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <footer className="fixed bottom-0 left-0 right-0 border-t border-border/40 bg-card/95 backdrop-blur-sm py-1.5 px-3 text-center text-xs text-muted-foreground z-10">
+        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-1">
           <p>© {new Date().getFullYear()} EasyPSC</p>
-          <div className="flex gap-2 sm:gap-4">
+          <div className="flex gap-2">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -401,7 +351,7 @@ const Index = () => {
                 title: "Privacy Policy", 
                 description: "Your data is secure and never shared with third parties." 
               })}
-              className="text-xs sm:text-sm"
+              className="text-xs h-7 px-2"
             >
               Privacy
             </Button>
@@ -412,7 +362,7 @@ const Index = () => {
                 title: "Terms of Service", 
                 description: "By using this service, you agree to our terms and conditions." 
               })}
-              className="text-xs sm:text-sm"
+              className="text-xs h-7 px-2"
             >
               Terms
             </Button>
