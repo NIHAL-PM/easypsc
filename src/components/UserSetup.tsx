@@ -46,7 +46,7 @@ const UserSetup = () => {
     setUser(newUser);
     
     toast({
-      title: 'Welcome to Learnify!',
+      title: 'Welcome to Easy PSC!',
       description: 'Your profile has been set up successfully.',
     });
   };
@@ -81,7 +81,7 @@ const UserSetup = () => {
         >
           <motion.div variants={item}>
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to Learnify</h1>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to Easy PSC</h1>
               <p className="text-muted-foreground">
                 AI-powered question bank for competitive exams
               </p>
