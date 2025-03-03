@@ -113,23 +113,23 @@ const QuestionGenerator = () => {
                 onValueChange={setDifficulty}
                 className="grid grid-cols-3 gap-2"
               >
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
                   <RadioGroupItem value="easy" id="easy" className="text-green-600" />
-                  <Label htmlFor="easy" className="cursor-pointer flex items-center gap-1">
+                  <Label htmlFor="easy" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
                     <Shield className="w-3 h-3 text-green-500" />
                     <span>Easy</span>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
                   <RadioGroupItem value="medium" id="medium" className="text-amber-600" />
-                  <Label htmlFor="medium" className="cursor-pointer flex items-center gap-1">
+                  <Label htmlFor="medium" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
                     <Shield className="w-3 h-3 text-amber-500" />
                     <span>Medium</span>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
                   <RadioGroupItem value="hard" id="hard" className="text-red-600" />
-                  <Label htmlFor="hard" className="cursor-pointer flex items-center gap-1">
+                  <Label htmlFor="hard" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
                     <ShieldAlert className="w-3 h-3 text-red-500" />
                     <span>Hard</span>
                   </Label>
