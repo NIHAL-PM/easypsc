@@ -10,23 +10,26 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        gradient: "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all",
+        gradient: "bg-gradient-to-r from-violet-600 via-violet-500 to-purple-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all",
         "gradient-secondary": "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:scale-[1.02] transition-all",
-        "gradient-outline": "border-2 border-transparent bg-background hover:border-indigo-500 transition-all bg-gradient-to-r from-indigo-500/0 via-purple-500/0 to-pink-500/0 hover:from-indigo-500/10 hover:via-purple-500/10 hover:to-pink-500/10 relative before:absolute before:inset-0 before:rounded-md before:p-[2px] before:bg-gradient-to-r before:from-indigo-500 before:via-purple-500 before:to-pink-500 before:content-[''] before:mask-composite:subtract before:-z-10",
+        "gradient-outline": "border border-transparent bg-background hover:border-violet-500 transition-all bg-gradient-to-r from-violet-500/0 via-purple-500/0 to-fuchsia-500/0 hover:from-violet-500/10 hover:via-purple-500/10 hover:to-fuchsia-500/10 relative before:absolute before:inset-0 before:rounded-md before:p-[1px] before:bg-gradient-to-r before:from-violet-500 before:via-purple-500 before:to-fuchsia-500 before:content-[''] before:mask-composite:subtract before:-z-10",
+        "glow": "bg-violet-600 text-white hover:bg-violet-700 shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:shadow-[0_0_25px_rgba(124,58,237,0.7)]",
+        "3d": "bg-violet-600 text-white border-b-4 border-violet-800 hover:translate-y-1 hover:border-b-2 active:translate-y-2 active:border-b-0 transition-all duration-150",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 rounded-md px-3 text-xs",
+        lg: "h-11 rounded-md px-8 text-base",
+        xl: "h-12 rounded-md px-10 text-base",
         icon: "h-10 w-10",
         "icon-sm": "h-8 w-8 rounded-md",
         "mobile-full": "h-10 w-full px-4 py-2",

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Check, X, ArrowRight, HelpCircle } from 'lucide-react';
+import { Check, X, ArrowRight, HelpCircle, Lightbulb, Award, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,6 @@ import { useAppStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackUserActivity } from '@/services/api';
 
-// QuestionCardProps is now optional since we'll use the store directly
 interface QuestionCardProps {
   question?: Question;
 }
@@ -77,16 +76,16 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
   const getOptionClass = (index: number) => {
     if (!isSubmitted) {
       return selectedOption === index 
-        ? 'bg-accent border-primary' 
-        : 'hover:bg-accent/50 transition-colors';
+        ? 'bg-violet-50 border-violet-300 dark:bg-violet-900/30 dark:border-violet-600' 
+        : 'hover:bg-violet-50/50 hover:border-violet-200 transition-colors';
     }
     
     if (index === question.correctOption) {
-      return 'bg-green-100 border-green-500 dark:bg-green-900/30 dark:border-green-600';
+      return 'bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600';
     }
     
     if (selectedOption === index && index !== question.correctOption) {
-      return 'bg-red-100 border-red-500 dark:bg-red-900/30 dark:border-red-600';
+      return 'bg-red-50 border-red-300 dark:bg-red-900/30 dark:border-red-600';
     }
     
     return 'opacity-60';
@@ -100,21 +99,35 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
       transition={{ duration: 0.3 }}
       className="w-full max-w-3xl mx-auto"
     >
-      <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm neo-morphism">
+      <Card className="overflow-hidden border border-violet-100 shadow-md bg-card/95 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-600"></div>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center mb-2">
-            <Badge variant="outline" className="font-normal text-xs capitalize">
+            <Badge variant="outline" className="font-normal text-xs capitalize bg-violet-50 text-violet-700 border-violet-200">
               {question.category}
             </Badge>
             <Badge variant={
               question.difficulty === 'easy' ? 'outline' : 
               question.difficulty === 'medium' ? 'secondary' : 
               'destructive'
-            } className="font-normal text-xs capitalize">
+            } className={`font-normal text-xs capitalize ${
+              question.difficulty === 'easy' ? 'bg-green-50 text-green-700 border-green-200' :
+              question.difficulty === 'medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+              'bg-red-50 text-red-700 border-red-200'
+            }`}>
+              {question.difficulty === 'easy' && (
+                <Check className="w-3 h-3 mr-1" />
+              )}
+              {question.difficulty === 'medium' && (
+                <Award className="w-3 h-3 mr-1" />
+              )}
+              {question.difficulty === 'hard' && (
+                <AlertTriangle className="w-3 h-3 mr-1" />
+              )}
               {question.difficulty}
             </Badge>
           </div>
-          <CardTitle className="text-xl md:text-2xl text-left leading-tight tracking-tight">
+          <CardTitle className="text-xl md:text-2xl text-left leading-tight tracking-tight text-violet-900 dark:text-violet-100">
             {question.text}
           </CardTitle>
         </CardHeader>
@@ -126,11 +139,11 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.1 }}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${getOptionClass(index)}`}
+                className={`p-4 border rounded-lg cursor-pointer transition-all ${getOptionClass(index)} hover:shadow-sm`}
                 onClick={() => !isSubmitted && selectOption(index)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-background border text-sm font-medium">
+                  <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 border border-violet-200 text-sm font-medium text-violet-800">
                     {String.fromCharCode(65 + index)}
                   </div>
                   <div className="text-left">{option}</div>
@@ -152,13 +165,13 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
-                className="mt-6 p-4 rounded-lg bg-accent/50 border"
+                className="mt-6 p-4 rounded-lg bg-violet-50 border border-violet-200"
               >
                 <div className="flex items-start gap-2">
-                  <HelpCircle className="flex-shrink-0 mt-0.5 w-5 h-5 text-muted-foreground" />
+                  <Lightbulb className="flex-shrink-0 mt-0.5 w-5 h-5 text-violet-500" />
                   <div>
-                    <h4 className="font-medium mb-1">Explanation</h4>
-                    <p className="text-sm text-muted-foreground">{question.explanation}</p>
+                    <h4 className="font-medium mb-1 text-violet-800">Explanation</h4>
+                    <p className="text-sm text-violet-700">{question.explanation}</p>
                   </div>
                 </div>
               </motion.div>
@@ -169,7 +182,8 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
         <CardFooter className="flex justify-between gap-4 pt-2">
           {!isSubmitted ? (
             <Button 
-              className="w-full transition-all" 
+              variant="gradient"
+              className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-all btn-modern" 
               onClick={handleSubmit}
               disabled={selectedOption === null}
             >
@@ -177,7 +191,8 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
             </Button>
           ) : (
             <Button 
-              className="w-full flex items-center gap-2 transition-all" 
+              variant="gradient"
+              className="w-full flex items-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-all btn-modern" 
               onClick={handleNext}
             >
               Next Question <ArrowRight className="w-4 h-4" />

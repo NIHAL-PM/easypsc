@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { Loader2Icon } from 'lucide-react';
+import { Loader2, Zap, Sparkles, Shield, ShieldAlert } from 'lucide-react';
 
 const QuestionGenerator = () => {
   const { 
@@ -89,9 +90,13 @@ const QuestionGenerator = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm neo-morphism">
+      <Card className="overflow-hidden border border-violet-100 shadow-md bg-card/95 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-600"></div>
         <CardHeader className="pb-2">
-          <CardTitle className="text-xl">Generate Questions</CardTitle>
+          <CardTitle className="text-xl flex items-center gap-2 text-violet-800">
+            <Zap className="w-5 h-5 text-violet-500" />
+            Generate Questions
+          </CardTitle>
           <CardDescription>
             Customize your practice session
           </CardDescription>
@@ -99,23 +104,35 @@ const QuestionGenerator = () => {
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Difficulty Level</Label>
+              <Label className="flex items-center gap-2 text-violet-800">
+                <Sparkles className="w-4 h-4 text-violet-500" />
+                <span>Difficulty Level</span>
+              </Label>
               <RadioGroup 
                 defaultValue={difficulty} 
                 onValueChange={setDifficulty}
                 className="grid grid-cols-3 gap-2"
               >
-                <div className="flex items-center space-x-2 border rounded-md p-3 transition-colors hover:bg-accent">
-                  <RadioGroupItem value="easy" id="easy" />
-                  <Label htmlFor="easy" className="cursor-pointer">Easy</Label>
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                  <RadioGroupItem value="easy" id="easy" className="text-green-600" />
+                  <Label htmlFor="easy" className="cursor-pointer flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-green-500" />
+                    <span>Easy</span>
+                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 border rounded-md p-3 transition-colors hover:bg-accent">
-                  <RadioGroupItem value="medium" id="medium" />
-                  <Label htmlFor="medium" className="cursor-pointer">Medium</Label>
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                  <RadioGroupItem value="medium" id="medium" className="text-amber-600" />
+                  <Label htmlFor="medium" className="cursor-pointer flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-amber-500" />
+                    <span>Medium</span>
+                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 border rounded-md p-3 transition-colors hover:bg-accent">
-                  <RadioGroupItem value="hard" id="hard" />
-                  <Label htmlFor="hard" className="cursor-pointer">Hard</Label>
+                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-3 transition-colors hover:bg-violet-50 hover:border-violet-200">
+                  <RadioGroupItem value="hard" id="hard" className="text-red-600" />
+                  <Label htmlFor="hard" className="cursor-pointer flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3 text-red-500" />
+                    <span>Hard</span>
+                  </Label>
                 </div>
               </RadioGroup>
             </div>
@@ -123,17 +140,21 @@ const QuestionGenerator = () => {
         </CardContent>
         <CardFooter>
           <Button 
+            variant="gradient"
             onClick={handleGenerateQuestions} 
-            className="w-full"
+            className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 transition-all duration-300 btn-modern"
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating...
               </>
             ) : (
-              <>Generate Questions</>
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Questions
+              </>
             )}
           </Button>
         </CardFooter>

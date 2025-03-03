@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { CrownIcon, LineChart, ArrowRight, Award, BarChart3 } from 'lucide-react';
+import { Crown, LineChart, ArrowRight, Award, BarChart3, User, Rocket, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProfileCard = () => {
@@ -24,60 +24,69 @@ const ProfileCard = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.1 }}
     >
-      <Card className="overflow-hidden border border-border/40 shadow-md bg-card/95 backdrop-blur-sm liquid-card">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+      <Card className="overflow-hidden border border-violet-100 shadow-md bg-card/95 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-600"></div>
         <CardHeader className="pb-2">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-spin-slow blur-sm opacity-70"></div>
-              <Avatar className="w-16 h-16 border-2 border-background relative">
-                <AvatarFallback className="bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-lg">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-500 animate-pulse-subtle blur-sm opacity-80"></div>
+              <Avatar className="w-16 h-16 border-2 border-white relative">
+                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-lg">
                   {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              {user.isPremium && (
+                <div className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-yellow-300 p-1 rounded-full shadow-lg">
+                  <Crown className="w-3 h-3 text-white" />
+                </div>
+              )}
             </div>
             <div>
-              <CardTitle className="text-xl">{user.name}</CardTitle>
+              <CardTitle className="text-xl text-violet-800 dark:text-violet-300">{user.name}</CardTitle>
               <CardDescription className="flex items-center gap-1">
-                {user.examType} Aspirant
+                <User className="w-3 h-3 text-violet-500" />
+                <span>{user.examType} Aspirant</span>
                 {user.isPremium && (
-                  <span className="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gradient-to-r from-amber-500 to-yellow-300 text-white">
-                    <CrownIcon className="w-3 h-3 mr-0.5" /> PREMIUM
+                  <span className="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gradient-to-r from-amber-400 to-yellow-300 text-white">
+                    <Crown className="w-3 h-3 mr-0.5" /> PREMIUM
                   </span>
                 )}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{user.questionsAnswered} questions</span>
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Rocket className="w-3 h-3 text-violet-500" />
+                Progress
+              </span>
+              <span className="font-medium text-violet-700 dark:text-violet-300">{user.questionsAnswered} questions</span>
             </div>
-            <div className="h-2 rounded-full bg-accent/50 overflow-hidden">
+            <div className="h-2 rounded-full bg-violet-100 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(user.questionsAnswered, 100)}%` }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
+                className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-500"
               />
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-500/5 to-purple-500/10">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 transition-all hover:shadow-md">
               <div className="flex flex-col items-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">{accuracy}%</div>
-                <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">{accuracy}%</div>
+                <div className="text-sm text-violet-600 mt-1 flex items-center gap-1">
                   <Award className="w-4 h-4" /> Accuracy
                 </div>
               </div>
             </div>
-            <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-500/5 to-purple-500/10">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 transition-all hover:shadow-md">
               <div className="flex flex-col items-center">
-                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">{stats.correctAnswers}</div>
-                <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">{stats.correctAnswers}</div>
+                <div className="text-sm text-violet-600 mt-1 flex items-center gap-1">
                   <BarChart3 className="w-4 h-4" /> Correct
                 </div>
               </div>
@@ -85,22 +94,25 @@ const ProfileCard = () => {
           </div>
           
           {!user.isPremium && (
-            <div className="p-4 rounded-lg border border-amber-200/50 bg-gradient-to-r from-amber-50/50 to-yellow-50/50 dark:from-amber-950/20 dark:to-yellow-950/20 dark:border-amber-900/50">
+            <div className="p-4 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-all">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r from-amber-400 to-yellow-300 text-white flex-shrink-0">
-                  <CrownIcon className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r from-amber-400 to-yellow-300 text-white flex-shrink-0 shadow-md">
+                  <Crown className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Free Plan</h4>
-                  <p className="text-xs text-muted-foreground mb-2">
+                  <h4 className="font-medium text-amber-800 text-sm mb-1 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Free Plan
+                  </h4>
+                  <p className="text-xs text-amber-700 mb-2">
                     You have <span className="font-semibold">{questionsRemaining}</span> questions remaining this month.
                   </p>
                   <Button 
                     variant="gradient-secondary" 
                     size="sm" 
-                    className="w-full text-xs"
+                    className="w-full text-xs shadow-sm btn-modern"
                     onClick={() => navigate("/premium")}
                   >
+                    <Crown className="w-3 h-3 mr-1" />
                     Upgrade to Premium
                   </Button>
                 </div>
@@ -109,13 +121,17 @@ const ProfileCard = () => {
           )}
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
-          <Button variant="gradient-outline" className="w-full" size="sm">
-            <LineChart className="w-4 h-4 mr-2" />
+          <Button 
+            variant="gradient-outline" 
+            className="w-full border-violet-200 hover:border-violet-400" 
+            size="sm"
+          >
+            <LineChart className="w-4 h-4 mr-2 text-violet-600" />
             View Detailed Stats
           </Button>
           <Button 
             variant="ghost" 
-            className="w-full" 
+            className="w-full text-violet-600 hover:bg-violet-50" 
             size="sm"
             onClick={() => navigate("/admin")}
           >
