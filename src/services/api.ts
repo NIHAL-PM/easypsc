@@ -1,6 +1,7 @@
 
 import { Question, ExamType } from '@/types';
 import { useAppStore } from '@/lib/store';
+import { useQuestionStore } from './questionStore';
 
 // Google Gemini API configuration
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD4p5YZyQbQRDgu37WqIEl7QSXBn1O3p6s";
@@ -22,9 +23,69 @@ export async function generateQuestions({
   askedQuestionIds = []
 }: GenerateQuestionsParams): Promise<Question[]> {
   try {
+    // First check for custom questions in the store
+    const questionStore = useQuestionStore.getState();
+    const customQuestions = questionStore.getQuestionsByExamType(examType, difficulty)
+      .filter(q => !askedQuestionIds.includes(q.id));
+    
+    // If we have enough custom questions, use those first
+    if (customQuestions.length >= count) {
+      console.log("Using custom questions from the store");
+      return customQuestions.slice(0, count);
+    }
+    
+    // If we have some custom questions but not enough, use what we have and get the rest from API
+    if (customQuestions.length > 0 && customQuestions.length < count) {
+      console.log(`Using ${customQuestions.length} custom questions, fetching ${count - customQuestions.length} more from API`);
+      
+      // Get the remaining questions from API or mock data
+      const apiCount = count - customQuestions.length;
+      const apiLanguage = examType === 'PSC' ? 'Malayalam' : 'English';
+      
+      const remainingQuestions = await fetchQuestionsFromAPI(
+        examType,
+        difficulty,
+        apiCount,
+        askedQuestionIds,
+        apiLanguage
+      );
+      
+      return [...customQuestions, ...remainingQuestions];
+    }
+    
+    // If no custom questions available, get all from API or mock data
+    console.log("No matching custom questions, fetching from API");
+    const apiLanguage = examType === 'PSC' ? 'Malayalam' : 'English';
+    
+    return await fetchQuestionsFromAPI(
+      examType,
+      difficulty,
+      count,
+      askedQuestionIds,
+      apiLanguage
+    );
+  } catch (error) {
+    console.error("Error generating questions:", error);
+    // Return mock questions as fallback
+    return getMockQuestions(examType, difficulty, count, askedQuestionIds);
+  }
+}
+
+async function fetchQuestionsFromAPI(
+  examType: ExamType,
+  difficulty: string,
+  count: number,
+  askedQuestionIds: string[] = [],
+  language: string = 'English'
+): Promise<Question[]> {
+  try {
+    const languageInstruction = language === 'Malayalam' 
+      ? 'Generate questions in Malayalam language for Kerala PSC exam.' 
+      : 'Generate questions in English.';
+      
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
-    ${category ? `Category: ${category}.` : ''}
+    ${languageInstruction}
     
     Important: Generate completely new and unique questions that have not been used before.
     
@@ -124,7 +185,10 @@ function getMockQuestions(
   count: number, 
   askedQuestionIds: string[] = []
 ): Question[] {
-  const allMockQuestions: Question[] = [
+  let allMockQuestions: Question[] = [];
+  
+  // General questions for all exam types
+  const generalQuestions: Question[] = [
     {
       id: "q1",
       text: "Which article of the Indian Constitution abolishes untouchability?",
@@ -196,6 +260,64 @@ function getMockQuestions(
       difficulty: "easy",
     }
   ];
+  
+  // Malayalam questions for Kerala PSC
+  const keralaPscQuestions: Question[] = [
+    {
+      id: "kpsc-mock-1",
+      text: "കേരളത്തിന്റെ ആദ്യ മുഖ്യമന്ത്രി ആരായിരുന്നു?",
+      options: [
+        "ഇ.എം.എസ്. നമ്പൂതിരിപ്പാട്", 
+        "പട്ടം താണു പിള്ള", 
+        "സി. അച്യുത മേനോൻ", 
+        "ആർ. ശങ്കർ"
+      ],
+      correctOption: 0,
+      explanation: "ഇ.എം.എസ്. നമ്പൂതിരിപ്പാട് ആയിരുന്നു കേരളത്തിന്റെ ആദ്യ മുഖ്യമന്ത്രി. 1957 ഏപ്രിൽ 5 മുതൽ 1959 ജൂലൈ 31 വരെ അദ്ദേഹം മുഖ്യമന്ത്രിയായി സേവനമനുഷ്ഠിച്ചു.",
+      category: "കേരള ചരിത്രം",
+      difficulty: "easy",
+    },
+    {
+      id: "kpsc-mock-2",
+      text: "കേരള സംസ്ഥാനം രൂപീകരിച്ചത് എന്നാണ്?",
+      options: [
+        "1956 നവംബർ 1", 
+        "1957 ജനുവരി 26", 
+        "1950 ജനുവരി 26", 
+        "1947 ഓഗസ്റ്റ് 15"
+      ],
+      correctOption: 0,
+      explanation: "കേരള സംസ്ഥാനം 1956 നവംബർ 1-ന് രൂപീകരിച്ചു. ഇത് സംസ്ഥാന പുനഃസംഘടനാ നിയമത്തിന്റെ ഭാഗമായിരുന്നു.",
+      category: "കേരള ചരിത്രം",
+      difficulty: "easy",
+    },
+    {
+      id: "kpsc-mock-3",
+      text: "താഴെ പറയുന്നവയിൽ ഏതാണ് കേരളത്തിലെ ഏറ്റവും നീളം കൂടിയ നദി?",
+      options: [
+        "പമ്പ", 
+        "പെരിയാർ", 
+        "ഭാരതപ്പുഴ", 
+        "കബനി"
+      ],
+      correctOption: 1,
+      explanation: "പെരിയാർ ആണ് കേരളത്തിലെ ഏറ്റവും നീളം കൂടിയ നദി, ഏകദേശം 244 കിലോമീറ്റർ നീളമുണ്ട്.",
+      category: "കേരള ഭൂമിശാസ്ത്രം",
+      difficulty: "medium",
+    },
+  ];
+  
+  // Select appropriate questions based on exam type
+  if (examType === 'PSC') {
+    allMockQuestions = keralaPscQuestions;
+  } else {
+    allMockQuestions = generalQuestions;
+  }
+  
+  // Filter by difficulty if specified
+  if (difficulty) {
+    allMockQuestions = allMockQuestions.filter(q => q.difficulty === difficulty);
+  }
   
   // Filter out questions that have already been asked
   const availableQuestions = allMockQuestions.filter(

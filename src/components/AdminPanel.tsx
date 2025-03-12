@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -18,13 +18,19 @@ import {
   BadgeIcon,
   TrendingUpIcon,
   UserPlusIcon,
-  ShieldIcon 
+  ShieldIcon,
+  BookOpenIcon,
+  PlusCircleIcon,
+  Trash2Icon,
+  EditIcon
 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { useAppStore } from '@/lib/store';
-import { User, ExamType } from '@/types';
+import { useQuestionStore } from '@/services/questionStore';
+import { User, ExamType, Question } from '@/types';
 import AnimatedText from './AnimatedText';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AdminPanel = () => {
   const { toast } = useToast();
@@ -37,7 +43,28 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   
+  const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [questionFormData, setQuestionFormData] = useState<Partial<Question>>({
+    text: '',
+    options: ['', '', '', ''],
+    correctOption: 0,
+    explanation: '',
+    category: '',
+    difficulty: 'medium'
+  });
+  const [displayedQuestions, setDisplayedQuestions] = useState<Question[]>([]);
+  const [questionSearchTerm, setQuestionSearchTerm] = useState('');
+  const [questionExamFilter, setQuestionExamFilter] = useState<string>('all');
+  
   const { allUsers, upgradeUserToPremium, addUser } = useAppStore();
+  const { 
+    customQuestions,
+    addQuestion,
+    updateQuestion,
+    deleteQuestion
+  } = useQuestionStore();
   
   const handleLogin = () => {
     setIsLoading(true);
@@ -72,7 +99,6 @@ const AdminPanel = () => {
     });
   };
   
-  // Load users after login
   useEffect(() => {
     if (isLoggedIn && !usersLoaded) {
       setIsLoading(true);
@@ -105,6 +131,159 @@ const AdminPanel = () => {
     });
   };
   
+  useEffect(() => {
+    if (isLoggedIn) {
+      setDisplayedQuestions(customQuestions);
+    }
+  }, [isLoggedIn, customQuestions]);
+  
+  const handleQuestionSearch = () => {
+    let filtered = [...customQuestions];
+    
+    // Filter by search term
+    if (questionSearchTerm) {
+      const term = questionSearchTerm.toLowerCase();
+      filtered = filtered.filter(q => 
+        q.text.toLowerCase().includes(term) || 
+        q.category.toLowerCase().includes(term) ||
+        q.options.some(opt => opt.toLowerCase().includes(term))
+      );
+    }
+    
+    // Filter by exam type
+    if (questionExamFilter && questionExamFilter !== 'all') {
+      filtered = filtered.filter(q => {
+        if (questionExamFilter === 'PSC') {
+          // For PSC, look for Malayalam content or PSC in category
+          return q.category.includes('കേരള') || 
+                 q.category.includes('PSC') ||
+                 q.text.match(/[അ-ഹ]/); // Contains Malayalam characters
+        } else {
+          return q.category.includes(questionExamFilter);
+        }
+      });
+    }
+    
+    setDisplayedQuestions(filtered);
+  };
+  
+  useEffect(() => {
+    handleQuestionSearch();
+  }, [questionSearchTerm, questionExamFilter, customQuestions]);
+  
+  const openAddQuestionDialog = () => {
+    setIsEditMode(false);
+    setCurrentQuestion(null);
+    setQuestionFormData({
+      text: '',
+      options: ['', '', '', ''],
+      correctOption: 0,
+      explanation: '',
+      category: '',
+      difficulty: 'medium'
+    });
+    setQuestionDialogOpen(true);
+  };
+  
+  const openEditQuestionDialog = (question: Question) => {
+    setIsEditMode(true);
+    setCurrentQuestion(question);
+    setQuestionFormData({
+      text: question.text,
+      options: [...question.options],
+      correctOption: question.correctOption,
+      explanation: question.explanation,
+      category: question.category,
+      difficulty: question.difficulty
+    });
+    setQuestionDialogOpen(true);
+  };
+  
+  const handleQuestionFormChange = (field: string, value: string | string[] | number) => {
+    setQuestionFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleOptionChange = (index: number, value: string) => {
+    const newOptions = [...questionFormData.options as string[]];
+    newOptions[index] = value;
+    setQuestionFormData(prev => ({
+      ...prev,
+      options: newOptions
+    }));
+  };
+  
+  const handleSaveQuestion = () => {
+    // Form validation
+    if (!questionFormData.text || !questionFormData.explanation || !questionFormData.category) {
+      toast({
+        title: 'Missing fields',
+        description: 'Please fill all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (questionFormData.options?.some(opt => !opt)) {
+      toast({
+        title: 'Missing options',
+        description: 'Please fill all four options',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Prepare question object
+    const questionToSave: Question = {
+      id: isEditMode && currentQuestion ? currentQuestion.id : `q-custom-${Date.now()}`,
+      text: questionFormData.text as string,
+      options: questionFormData.options as string[],
+      correctOption: questionFormData.correctOption as number,
+      explanation: questionFormData.explanation as string,
+      category: questionFormData.category as string,
+      difficulty: questionFormData.difficulty as 'easy' | 'medium' | 'hard'
+    };
+    
+    // Save question
+    if (isEditMode && currentQuestion) {
+      updateQuestion(currentQuestion.id, questionToSave);
+      toast({
+        title: 'Question updated',
+        description: 'The question has been updated successfully'
+      });
+    } else {
+      addQuestion(questionToSave);
+      toast({
+        title: 'Question added',
+        description: 'New question has been added successfully'
+      });
+    }
+    
+    // Close dialog and refresh list
+    setQuestionDialogOpen(false);
+  };
+  
+  const handleDeleteQuestion = (questionId: string) => {
+    if (confirm('Are you sure you want to delete this question?')) {
+      deleteQuestion(questionId);
+      toast({
+        title: 'Question deleted',
+        description: 'The question has been deleted successfully'
+      });
+    }
+  };
+  
+  const totalUsers = displayedUsers.length;
+  const premiumUsers = displayedUsers.filter(u => u.isPremium).length;
+  const totalQuestionsAnswered = displayedUsers.reduce((sum, user) => sum + user.questionsAnswered, 0);
+  const averageAccuracy = totalQuestionsAnswered > 0
+    ? Math.round((displayedUsers.reduce((sum, user) => sum + user.questionsCorrect, 0) / totalQuestionsAnswered) * 100)
+    : 0;
+
+  const revenue = premiumUsers * 20;
+  
   if (!isLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/40">
@@ -114,7 +293,6 @@ const AdminPanel = () => {
           transition={{ duration: 0.5 }}
           className="max-w-md w-full mx-auto px-4"
         >
-          {/* Login Button and Dialog for Mobile */}
           <Card className="overflow-hidden border-2 border-primary/10 shadow-lg bg-card/95 backdrop-blur-sm rounded-xl">
             <CardHeader className="pb-2 space-y-1">
               <motion.div 
@@ -187,7 +365,6 @@ const AdminPanel = () => {
                 </Dialog>
               </div>
               
-              {/* Desktop Login Form */}
               <div className="hidden md:block space-y-4">
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
@@ -251,17 +428,6 @@ const AdminPanel = () => {
     );
   }
   
-  // Dashboard stats
-  const totalUsers = displayedUsers.length;
-  const premiumUsers = displayedUsers.filter(u => u.isPremium).length;
-  const totalQuestionsAnswered = displayedUsers.reduce((sum, user) => sum + user.questionsAnswered, 0);
-  const averageAccuracy = totalQuestionsAnswered > 0
-    ? Math.round((displayedUsers.reduce((sum, user) => sum + user.questionsCorrect, 0) / totalQuestionsAnswered) * 100)
-    : 0;
-
-  // Calculate revenue (₹20 per premium user)
-  const revenue = premiumUsers * 20;
-  
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -307,7 +473,7 @@ const AdminPanel = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <TabsList className="grid grid-cols-4 mb-6 p-1 bg-muted/50 rounded-lg">
+            <TabsList className="grid grid-cols-5 mb-6 p-1 bg-muted/50 rounded-lg">
               <TabsTrigger 
                 value="dashboard" 
                 className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -321,6 +487,13 @@ const AdminPanel = () => {
               >
                 <UsersIcon className="h-4 w-4" />
                 Users
+              </TabsTrigger>
+              <TabsTrigger 
+                value="questions" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <BookOpenIcon className="h-4 w-4" />
+                Questions
               </TabsTrigger>
               <TabsTrigger 
                 value="payments" 
@@ -413,7 +586,6 @@ const AdminPanel = () => {
                   </CardContent>
                 </Card>
                 
-                {/* More dashboard content would go here */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
                     <CardHeader>
@@ -456,7 +628,6 @@ const AdminPanel = () => {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {/* Group users by exam type */}
                           {Object.entries(
                             displayedUsers.reduce((acc, user) => {
                               acc[user.examType] = (acc[user.examType] || 0) + 1;
@@ -570,6 +741,234 @@ const AdminPanel = () => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+              
+              <TabsContent value="questions" className="space-y-4">
+                <Card className="border border-border/40 shadow-md bg-card/95 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <BookOpenIcon className="h-5 w-5 text-primary" />
+                          Question Management
+                        </CardTitle>
+                        <CardDescription>
+                          Create, edit and manage custom questions for different exams
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        onClick={openAddQuestionDialog} 
+                        className="flex items-center gap-2 bg-primary"
+                      >
+                        <PlusCircleIcon className="h-4 w-4" />
+                        Add Question
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="w-full md:w-2/3">
+                          <Input
+                            placeholder="Search questions..."
+                            value={questionSearchTerm}
+                            onChange={(e) => setQuestionSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <div className="w-full md:w-1/3">
+                          <Select
+                            value={questionExamFilter}
+                            onValueChange={setQuestionExamFilter}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Filter by exam type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Exam Types</SelectItem>
+                              <SelectItem value="UPSC">UPSC</SelectItem>
+                              <SelectItem value="PSC">Kerala PSC (Malayalam)</SelectItem>
+                              <SelectItem value="SSC">SSC</SelectItem>
+                              <SelectItem value="Banking">Banking</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {isLoading ? (
+                        <div className="flex justify-center py-10">
+                          <LoadingSpinner size="md" text="Loading questions..." />
+                        </div>
+                      ) : displayedQuestions.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          No questions found. Add some questions to get started.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {displayedQuestions.map((question) => (
+                            <Card key={question.id} className="border border-border/20 hover:bg-accent/5 transition-colors">
+                              <CardContent className="pt-4">
+                                <div className="flex justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex gap-2 mb-2">
+                                      <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
+                                        {question.category}
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-full text-xs ${
+                                        question.difficulty === 'easy' 
+                                          ? 'bg-green-100 text-green-800' 
+                                          : question.difficulty === 'medium'
+                                            ? 'bg-amber-100 text-amber-800'
+                                            : 'bg-red-100 text-red-800'
+                                      }`}>
+                                        {question.difficulty}
+                                      </span>
+                                    </div>
+                                    <h3 className="font-medium mb-2">{question.text}</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                                      {question.options.map((option, index) => (
+                                        <div key={index} className={`text-sm p-2 border rounded ${
+                                          index === question.correctOption 
+                                            ? 'bg-green-50 border-green-200 text-green-700' 
+                                            : 'bg-gray-50 border-gray-200'
+                                        }`}>
+                                          {String.fromCharCode(65 + index)}: {option}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      <span className="font-medium">Explanation:</span> {question.explanation}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openEditQuestionDialog(question)}
+                                      className="flex items-center gap-1"
+                                    >
+                                      <EditIcon className="h-3 w-3" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDeleteQuestion(question.id)}
+                                      className="flex items-center gap-1 text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash2Icon className="h-3 w-3" />
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
+                  <DialogContent className="sm:max-w-[650px]">
+                    <DialogHeader>
+                      <DialogTitle>{isEditMode ? 'Edit Question' : 'Add New Question'}</DialogTitle>
+                      <DialogDescription>
+                        {isEditMode 
+                          ? 'Update the question details below' 
+                          : 'Fill in the details to create a new question'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="question-text">Question Text</Label>
+                        <Textarea
+                          id="question-text"
+                          value={questionFormData.text || ''}
+                          onChange={(e) => handleQuestionFormChange('text', e.target.value)}
+                          placeholder="Enter the question"
+                          className="min-h-20"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="question-category">Category</Label>
+                          <Input
+                            id="question-category"
+                            value={questionFormData.category || ''}
+                            onChange={(e) => handleQuestionFormChange('category', e.target.value)}
+                            placeholder="e.g., Indian Constitution, കേരള ചരിത്രം"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="question-difficulty">Difficulty</Label>
+                          <Select
+                            value={questionFormData.difficulty as string}
+                            onValueChange={(value) => handleQuestionFormChange('difficulty', value)}
+                          >
+                            <SelectTrigger id="question-difficulty">
+                              <SelectValue placeholder="Select difficulty" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="easy">Easy</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="hard">Hard</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Options (select the correct answer)</Label>
+                        <div className="space-y-3">
+                          {[0, 1, 2, 3].map((index) => (
+                            <div key={index} className="flex items-center gap-3">
+                              <div className="flex-shrink-0">
+                                <input
+                                  type="radio"
+                                  id={`option-${index}`}
+                                  name="correctOption"
+                                  checked={questionFormData.correctOption === index}
+                                  onChange={() => handleQuestionFormChange('correctOption', index)}
+                                  className="w-4 h-4 text-primary"
+                                />
+                              </div>
+                              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary">
+                                {String.fromCharCode(65 + index)}
+                              </div>
+                              <Input
+                                value={questionFormData.options?.[index] || ''}
+                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                                className="flex-1"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="question-explanation">Explanation</Label>
+                        <Textarea
+                          id="question-explanation"
+                          value={questionFormData.explanation || ''}
+                          onChange={(e) => handleQuestionFormChange('explanation', e.target.value)}
+                          placeholder="Explain why the correct answer is right"
+                          className="min-h-20"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setQuestionDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSaveQuestion}>
+                        {isEditMode ? 'Update Question' : 'Add Question'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
               
               <TabsContent value="payments" className="space-y-4">
