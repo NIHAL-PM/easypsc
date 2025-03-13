@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { Loader2, Zap, Sparkles, Shield, ShieldAlert } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const QuestionGenerator = () => {
   const { 
@@ -19,11 +21,28 @@ const QuestionGenerator = () => {
     askedQuestionIds 
   } = useAppStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [difficulty, setDifficulty] = useState('medium');
   
   const handleGenerateQuestions = async () => {
     if (!user) return;
+    
+    // Check if non-premium user has questions remaining
+    if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
+      toast({
+        title: "Question limit reached",
+        description: "You've reached your monthly question limit. Upgrade to premium for unlimited questions.",
+        variant: "destructive"
+      });
+      
+      // Prompt to upgrade
+      const shouldUpgrade = window.confirm("Would you like to upgrade to premium for unlimited questions?");
+      if (shouldUpgrade) {
+        navigate("/premium");
+      }
+      return;
+    }
     
     setIsLoading(true);
     
@@ -34,8 +53,8 @@ const QuestionGenerator = () => {
         difficulty
       });
       
-      // Always generate 5 questions (unlimited)
-      const count = 5;
+      // Generate 5 questions for premium, or limited questions for free users
+      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
@@ -132,12 +151,17 @@ const QuestionGenerator = () => {
             variant="gradient"
             onClick={handleGenerateQuestions} 
             className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 transition-all duration-300 btn-modern"
-            disabled={isLoading}
+            disabled={isLoading || (!user?.isPremium && user?.monthlyQuestionsRemaining <= 0)}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating...
+              </>
+            ) : !user?.isPremium ? (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Questions ({user?.monthlyQuestionsRemaining || 0} remaining)
               </>
             ) : (
               <>

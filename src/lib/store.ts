@@ -57,19 +57,19 @@ export const useAppStore = create<AppState>()(
       askedQuestionIds: [], // Initialize empty array for tracking asked questions
       
       setUser: (user) => {
-        // Always set unlimited questions
-        const userWithUnlimitedQuestions = {
+        // Keep the user's existing premium status and question limits
+        const userWithId = {
           ...user,
-          monthlyQuestionsRemaining: 999999, // Effectively unlimited
-          isPremium: true, // Set everyone as premium so there are no limits
+          // Only set default questions if not already set
+          monthlyQuestionsRemaining: user.monthlyQuestionsRemaining || 20,
         };
         
-        set({ user: userWithUnlimitedQuestions });
+        set({ user: userWithId });
         
         // Also add this user to allUsers if not already there
         const { allUsers } = get();
-        if (!allUsers.some(u => u.id === userWithUnlimitedQuestions.id)) {
-          set({ allUsers: [...allUsers, userWithUnlimitedQuestions] });
+        if (!allUsers.some(u => u.id === userWithId.id)) {
+          set({ allUsers: [...allUsers, userWithId] });
         }
       },
       
@@ -78,12 +78,18 @@ export const useAppStore = create<AppState>()(
         
         if (!user) return;
         
+        let updatedQuestionsRemaining = user.monthlyQuestionsRemaining;
+        
+        // Only decrement questions for non-premium users
+        if (!user.isPremium && updatedQuestionsRemaining > 0) {
+          updatedQuestionsRemaining -= 1;
+        }
+        
         const updatedUser = {
           ...user,
           questionsAnswered: user.questionsAnswered + 1,
           questionsCorrect: attempt.isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
-          // Never reduce the question count, keep it unlimited
-          monthlyQuestionsRemaining: 999999
+          monthlyQuestionsRemaining: updatedQuestionsRemaining
         };
         
         // Update both the current user and in the all users array
