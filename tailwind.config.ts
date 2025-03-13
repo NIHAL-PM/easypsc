@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Plus Jakarta Sans', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -62,9 +66,6 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
-			},
-			fontFamily: {
-				sans: ['Inter var', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -137,7 +138,7 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-				'gradient-primary': 'linear-gradient(90deg, hsla(240, 100%, 70%, 1) 0%, hsla(277, 75%, 84%, 1) 50%, hsla(297, 50%, 51%, 1) 100%)',
+				'gradient-primary': 'linear-gradient(90deg, hsla(246, 70%, 59%, 1) 0%, hsla(263, 75%, 84%, 1) 50%, hsla(334, 86%, 67%, 1) 100%)',
 				'gradient-secondary': 'linear-gradient(90deg, hsla(39, 100%, 77%, 1) 0%, hsla(22, 90%, 57%, 1) 100%)',
 				'gradient-accent': 'linear-gradient(90deg, hsla(46, 73%, 75%, 1) 0%, hsla(176, 73%, 88%, 1) 100%)',
 				'gradient-hero': 'linear-gradient(90deg, hsla(221, 45%, 73%, 1) 0%, hsla(220, 78%, 29%, 1) 100%)',

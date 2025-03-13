@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2Icon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
+import { Loader2Icon, CheckCircle2Icon, XCircleIcon, Crown, Sparkles, Zap, Lightning, Infinity, Shield } from 'lucide-react';
 
 interface PremiumUpgradeProps {
   onClose?: () => void;
@@ -63,11 +64,24 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="container mx-auto py-12 px-4 max-w-md"
+      className="container mx-auto py-12 px-4 max-w-md relative"
     >
-      <Card className="bg-card/95 backdrop-blur-sm border border-border/40 shadow-lg overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-20 right-10 w-[30vw] h-[30vw] bg-gradient-to-br from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl hero-blob" style={{ animationDelay: '-2s' }}></div>
+        <div className="absolute bottom-20 left-10 w-[25vw] h-[25vw] bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl hero-blob"></div>
+      </div>
+      
+      <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
         <div className="p-6">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+              <Crown className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-center mb-2 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
             Upgrade to Premium
           </h2>
           <p className="text-muted-foreground text-center mb-6">
@@ -76,23 +90,35 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
           
           <div className="space-y-4">
             {/* Pricing Card */}
-            <div className="border rounded-lg p-4 bg-secondary/50 border-secondary/50">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium">Premium Plan</h3>
-                <Badge variant="secondary">Most Popular</Badge>
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-900 dark:to-indigo-950/30">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-medium text-indigo-700 dark:text-indigo-300">Premium Plan</h3>
+                <Badge className="font-medium bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0">Most Popular</Badge>
               </div>
               <p className="text-muted-foreground text-sm mb-4">
                 Unlimited questions, detailed analytics, and priority support.
               </p>
-              <div className="text-2xl font-bold">$9.99/month</div>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mt-3">
-                <li>Unlimited question generation</li>
-                <li>Detailed performance analytics</li>
-                <li>Priority customer support</li>
-                <li>Ad-free experience</li>
+              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">$9.99/month</div>
+              <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400 mt-4">
+                <li className="flex items-center gap-2">
+                  <Infinity className="w-4 h-4 text-indigo-500" />
+                  <span>Unlimited question generation</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Lightning className="w-4 h-4 text-indigo-500" />
+                  <span>Detailed performance analytics</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-500" />
+                  <span>Priority customer support</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  <span>Ad-free experience</span>
+                </li>
               </ul>
               <Button 
-                className="w-full mt-4" 
+                className="w-full mt-5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl text-white" 
                 onClick={handleUpgrade}
                 disabled={isProcessing}
               >
@@ -102,7 +128,10 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
                     Processing...
                   </>
                 ) : (
-                  "Upgrade Now"
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Upgrade Now
+                  </>
                 )}
               </Button>
             </div>
@@ -116,14 +145,18 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
             )}
             
             {user && user.isPremium && (
-              <div className="text-center text-green-500">
+              <div className="text-center text-emerald-500 dark:text-emerald-400">
                 <CheckCircle2Icon className="inline-block mr-2 h-5 w-5" />
                 You are already a premium member!
               </div>
             )}
             
             {/* Back Button */}
-            <Button variant="ghost" className="w-full" onClick={handleGoBack}>
+            <Button 
+              variant="outline" 
+              className="w-full border-slate-200 dark:border-slate-700" 
+              onClick={handleGoBack}
+            >
               Go Back
             </Button>
           </div>

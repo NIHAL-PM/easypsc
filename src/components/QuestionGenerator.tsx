@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { Loader2, Zap, Sparkles, Shield, ShieldAlert } from 'lucide-react';
+import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const QuestionGenerator = () => {
@@ -98,11 +98,11 @@ const QuestionGenerator = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="overflow-hidden border border-violet-100 shadow-md bg-card/95 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-600"></div>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl flex items-center gap-2 text-violet-800">
-            <Zap className="w-5 h-5 text-violet-500" />
+      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
+            <BrainCircuit className="w-5 h-5 text-indigo-500" />
             Generate Questions
           </CardTitle>
           <CardDescription>
@@ -112,34 +112,57 @@ const QuestionGenerator = () => {
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-violet-800">
-                <Sparkles className="w-4 h-4 text-violet-500" />
+              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                <Flame className="w-4 h-4 text-indigo-500" />
                 <span>Difficulty Level</span>
               </Label>
               <RadioGroup 
                 defaultValue={difficulty} 
                 onValueChange={setDifficulty}
-                className="grid grid-cols-3 gap-2"
+                className="grid grid-cols-3 gap-3"
               >
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
-                  <RadioGroupItem value="easy" id="easy" className="text-green-600" />
-                  <Label htmlFor="easy" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
-                    <Shield className="w-3 h-3 text-green-500" />
-                    <span>Easy</span>
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="easy" 
+                    id="easy" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="easy" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <ShieldCheck className="mb-1 h-5 w-5 text-emerald-500" />
+                    <span className="text-sm font-medium">Easy</span>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
-                  <RadioGroupItem value="medium" id="medium" className="text-amber-600" />
-                  <Label htmlFor="medium" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
-                    <Shield className="w-3 h-3 text-amber-500" />
-                    <span>Medium</span>
+                
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="medium" 
+                    id="medium" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="medium" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <Flame className="mb-1 h-5 w-5 text-amber-500" />
+                    <span className="text-sm font-medium">Medium</span>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 border border-violet-100 rounded-md p-2 transition-colors hover:bg-violet-50 hover:border-violet-200">
-                  <RadioGroupItem value="hard" id="hard" className="text-red-600" />
-                  <Label htmlFor="hard" className="cursor-pointer flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap">
-                    <ShieldAlert className="w-3 h-3 text-red-500" />
-                    <span>Hard</span>
+                
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="hard" 
+                    id="hard" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="hard" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <ShieldAlert className="mb-1 h-5 w-5 text-rose-500" />
+                    <span className="text-sm font-medium">Hard</span>
                   </Label>
                 </div>
               </RadioGroup>
@@ -148,9 +171,9 @@ const QuestionGenerator = () => {
         </CardContent>
         <CardFooter>
           <Button 
-            variant="gradient"
+            variant="default"
             onClick={handleGenerateQuestions} 
-            className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 transition-all duration-300 btn-modern"
+            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all duration-300 rounded-lg text-white shadow-md hover:shadow-xl"
             disabled={isLoading || (!user?.isPremium && user?.monthlyQuestionsRemaining <= 0)}
           >
             {isLoading ? (

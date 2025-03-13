@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,7 +7,7 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 0 0% 100%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -15,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 222 47% 11%;
+    --primary: 238 78% 59%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -32,9 +33,9 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222 47% 11%;
+    --ring: 238 78% 59%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -56,8 +57,8 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 238 78% 59%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -73,7 +74,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 238 78% 59%;
   }
 }
 
@@ -84,8 +85,9 @@
 
   body {
     @apply bg-background text-foreground font-sans min-h-screen antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     background-image: 
-      radial-gradient(circle at 20% 20%, rgba(76, 29, 149, 0.03) 0%, transparent 30%),
+      radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.03) 0%, transparent 30%),
       radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.03) 0%, transparent 30%),
       radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.01) 0%, transparent 60%);
   }
@@ -102,11 +104,11 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, 
-    rgba(124, 58, 237, 0.03),
+    rgba(79, 70, 229, 0.03),
     rgba(139, 92, 246, 0.05),
     rgba(167, 139, 250, 0.07),
     rgba(139, 92, 246, 0.05),
-    rgba(124, 58, 237, 0.03)
+    rgba(79, 70, 229, 0.03)
   );
   background-size: 500% 100%;
   animation: liquid-shift 15s linear infinite;
@@ -172,9 +174,9 @@
   background: linear-gradient(
     to bottom right,
     transparent 0%,
-    rgba(124, 58, 237, 0.03) 20%,
+    rgba(79, 70, 229, 0.03) 20%,
     rgba(139, 92, 246, 0.05) 40%,
-    rgba(124, 58, 237, 0.03) 60%,
+    rgba(79, 70, 229, 0.03) 60%,
     transparent 100%
   );
   transition: all 0.3s ease;
@@ -203,9 +205,9 @@
   background: linear-gradient(
     45deg, 
     transparent 0%, 
-    rgba(124, 58, 237, 0.3) 25%, 
+    rgba(79, 70, 229, 0.3) 25%, 
     rgba(139, 92, 246, 0.5) 50%, 
-    rgba(124, 58, 237, 0.3) 75%, 
+    rgba(79, 70, 229, 0.3) 75%, 
     transparent 100%
   );
   background-size: 400% 400%;
@@ -236,7 +238,7 @@
 .hero-gradient {
   background: linear-gradient(
     135deg,
-    rgba(124, 58, 237, 0.1) 0%,
+    rgba(79, 70, 229, 0.1) 0%,
     rgba(139, 92, 246, 0.05) 50%,
     rgba(167, 139, 250, 0.1) 100%
   );
@@ -304,7 +306,7 @@
 
 /* Enhanced glow effects */
 .glow-on-hover:hover {
-  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
 }
 
 /* 3D effect card */
@@ -377,10 +379,74 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.2);
+  background: rgba(79, 70, 229, 0.2);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(79, 70, 229, 0.4);
+}
+
+/* New modern UI elements */
+.card-modern {
+  @apply rounded-xl border-0 shadow-lg bg-white dark:bg-slate-900 overflow-hidden transition-all hover:shadow-xl dark:shadow-slate-800/20;
+}
+
+.input-modern {
+  @apply px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all;
+}
+
+.link-underline {
+  @apply relative inline-block;
+}
+
+.link-underline::after {
+  @apply content-[''] absolute w-full scale-x-0 h-0.5 bottom-0 left-0 bg-indigo-500 origin-bottom-right transition-transform duration-300;
+}
+
+.link-underline:hover::after {
+  @apply scale-x-100 origin-bottom-left;
+}
+
+.badge-modern {
+  @apply px-2.5 py-0.5 rounded-full text-xs font-medium inline-flex items-center gap-1;
+}
+
+.badge-success {
+  @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400;
+}
+
+.badge-warning {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400;
+}
+
+.badge-error {
+  @apply bg-rose-100 text-rose-800 dark:bg-rose-900/20 dark:text-rose-400;
+}
+
+.badge-info {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-900/20 dark:text-sky-400;
+}
+
+/* New avatars */
+.avatar-circle {
+  @apply rounded-full flex items-center justify-center overflow-hidden;
+}
+
+.avatar-colored {
+  @apply bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-medium;
+}
+
+.avatar-bordered {
+  @apply border-2 border-white dark:border-slate-800;
+}
+
+/* New card styles */
+.card-gradient-border {
+  @apply relative p-px rounded-xl overflow-hidden;
+  background: linear-gradient(to right, #4f46e5, #8b5cf6, #d946ef);
+}
+
+.card-inner {
+  @apply bg-white dark:bg-slate-900 rounded-xl p-5;
 }
