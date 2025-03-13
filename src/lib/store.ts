@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Question, QuestionAttempt, UserStats } from '@/types';
@@ -11,7 +10,7 @@ interface AppState {
   isLoading: boolean;
   selectedOption: number | null;
   showExplanation: boolean;
-  askedQuestionIds: string[]; // New state to track asked question IDs
+  askedQuestionIds: string[]; // Track asked question IDs
   
   // User actions
   setUser: (user: User) => void;
@@ -58,12 +57,19 @@ export const useAppStore = create<AppState>()(
       askedQuestionIds: [], // Initialize empty array for tracking asked questions
       
       setUser: (user) => {
-        set({ user });
+        // Always set unlimited questions
+        const userWithUnlimitedQuestions = {
+          ...user,
+          monthlyQuestionsRemaining: 999999, // Effectively unlimited
+          isPremium: true, // Set everyone as premium so there are no limits
+        };
+        
+        set({ user: userWithUnlimitedQuestions });
         
         // Also add this user to allUsers if not already there
         const { allUsers } = get();
-        if (!allUsers.some(u => u.id === user.id)) {
-          set({ allUsers: [...allUsers, user] });
+        if (!allUsers.some(u => u.id === userWithUnlimitedQuestions.id)) {
+          set({ allUsers: [...allUsers, userWithUnlimitedQuestions] });
         }
       },
       
@@ -76,7 +82,8 @@ export const useAppStore = create<AppState>()(
           ...user,
           questionsAnswered: user.questionsAnswered + 1,
           questionsCorrect: attempt.isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
-          monthlyQuestionsRemaining: user.isPremium ? user.monthlyQuestionsRemaining : user.monthlyQuestionsRemaining - 1
+          // Never reduce the question count, keep it unlimited
+          monthlyQuestionsRemaining: 999999
         };
         
         // Update both the current user and in the all users array
@@ -195,13 +202,13 @@ export const useAppStore = create<AppState>()(
         
         const updatedAllUsers = allUsers.map(u => 
           u.id === userId 
-            ? { ...u, isPremium: true, monthlyQuestionsRemaining: 999 } 
+            ? { ...u, isPremium: true, monthlyQuestionsRemaining: 999999 } 
             : u
         );
         
         // Also update the current user if they're the one being upgraded
         const updatedCurrentUser = user && user.id === userId 
-          ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 }
+          ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999999 }
           : user;
         
         set({ 
@@ -216,7 +223,7 @@ export const useAppStore = create<AppState>()(
         user: state.user,
         questionHistory: state.questionHistory,
         allUsers: state.allUsers,
-        askedQuestionIds: state.askedQuestionIds, // Add askedQuestionIds to persisted state
+        askedQuestionIds: state.askedQuestionIds,
       }),
     }
   )

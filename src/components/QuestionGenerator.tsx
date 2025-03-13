@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,16 +25,6 @@ const QuestionGenerator = () => {
   const handleGenerateQuestions = async () => {
     if (!user) return;
     
-    // Check if user has questions remaining in free tier
-    if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
-      toast({
-        title: 'Question limit reached',
-        description: 'Upgrade to premium for unlimited questions.',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
     setIsLoading(true);
     
     try {
@@ -45,8 +34,8 @@ const QuestionGenerator = () => {
         difficulty
       });
       
-      // Get 5 questions (or less if free tier)
-      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
+      // Always generate 5 questions (unlimited)
+      const count = 5;
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
