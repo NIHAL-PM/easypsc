@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2Icon, CheckCircle2Icon, XCircleIcon, Crown, Sparkles, Zap, Lightning, Infinity, Shield } from 'lucide-react';
+import { Loader2Icon, CheckCircle2Icon, XCircleIcon, Crown, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
 
 interface PremiumUpgradeProps {
   onClose?: () => void;
@@ -105,7 +104,7 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
                   <span>Unlimited question generation</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Lightning className="w-4 h-4 text-indigo-500" />
+                  <Zap className="w-4 h-4 text-indigo-500" />
                   <span>Detailed performance analytics</span>
                 </li>
                 <li className="flex items-center gap-2">
