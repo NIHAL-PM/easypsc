@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Question, QuestionAttempt, UserStats } from '@/types';
+import { User, Question, QuestionAttempt, UserStats, ExamType } from '@/types';
 
 interface AppState {
   user: User | null;
@@ -15,6 +15,7 @@ interface AppState {
   // User actions
   setUser: (user: User) => void;
   updateUserStats: (attempt: QuestionAttempt) => void;
+  changeExamType: (examType: ExamType) => void; // New function to change exam type
   logout: () => void;
   
   // Question actions
@@ -101,6 +102,30 @@ export const useAppStore = create<AppState>()(
           user: updatedUser,
           allUsers: updatedAllUsers,
           questionHistory: [...get().questionHistory, attempt]
+        });
+      },
+      
+      changeExamType: (examType) => {
+        const { user, allUsers } = get();
+        
+        if (!user) return;
+        
+        const updatedUser = {
+          ...user,
+          examType
+        };
+        
+        // Update both the current user and in the all users array
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === updatedUser.id ? updatedUser : u
+        );
+        
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers,
+          questions: [], // Clear questions when changing exam type
+          currentQuestion: null,
+          askedQuestionIds: [] // Clear asked questions when changing exam type
         });
       },
       

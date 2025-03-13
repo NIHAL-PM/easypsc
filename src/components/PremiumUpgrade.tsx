@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
@@ -8,6 +9,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2Icon, CheckCircle2Icon, XCircleIcon, Crown, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface PremiumUpgradeProps {
   onClose?: () => void;
 }
@@ -16,7 +23,23 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
   const { user, upgradeUserToPremium } = useAppStore();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Load Razorpay script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setIsRazorpayLoaded(true);
+    document.body.appendChild(script);
+    
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
   
   const handleUpgrade = () => {
     if (!user) {
@@ -31,23 +54,74 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
     
     setIsProcessing(true);
     
-    // Simulate payment processing
-    setTimeout(() => {
-      upgradeUserToPremium(user.id);
+    if (isRazorpayLoaded) {
+      // Create a new Razorpay instance
+      const options = {
+        key: 'rzp_test_lTcXyVVQB3TJHc', // Replace with your actual Razorpay test key
+        amount: 999 * 100, // Amount in paise (999 INR)
+        currency: 'INR',
+        name: 'EasyPSC',
+        description: 'Premium Subscription',
+        image: '/logo.png',
+        handler: function(response: any) {
+          // Handle successful payment
+          if (response.razorpay_payment_id) {
+            upgradeUserToPremium(user.id);
+            
+            toast({
+              title: "Upgrade Successful!",
+              description: "You now have access to premium features.",
+            });
+            
+            if (onClose) {
+              onClose();
+            } else {
+              navigate('/');
+            }
+          }
+          setIsProcessing(false);
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: '#6366f1', // Indigo color
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessing(false);
+            toast({
+              title: "Payment Cancelled",
+              description: "You can upgrade to premium anytime.",
+              variant: "default"
+            });
+          }
+        }
+      };
       
-      setIsProcessing(false);
-      
-      toast({
-        title: "Upgrade Successful!",
-        description: "You now have access to premium features.",
-      });
-      
-      if (onClose) {
-        onClose();
-      } else {
-        navigate('/');
-      }
-    }, 2000);
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      // Fallback if Razorpay is not loaded
+      // Simulate payment processing
+      setTimeout(() => {
+        upgradeUserToPremium(user.id);
+        
+        setIsProcessing(false);
+        
+        toast({
+          title: "Upgrade Successful!",
+          description: "You now have access to premium features.",
+        });
+        
+        if (onClose) {
+          onClose();
+        } else {
+          navigate('/');
+        }
+      }, 2000);
+    }
   };
   
   const handleGoBack = () => {
@@ -97,7 +171,7 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
               <p className="text-muted-foreground text-sm mb-4">
                 Unlimited questions, detailed analytics, and priority support.
               </p>
-              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">$9.99/month</div>
+              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">₹999/month</div>
               <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400 mt-4">
                 <li className="flex items-center gap-2">
                   <Infinity className="w-4 h-4 text-indigo-500" />

@@ -5,18 +5,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { Crown, LineChart, ArrowRight, Award, BarChart3, User, Rocket, Sparkles, PersonStanding, Brain } from 'lucide-react';
+import { Crown, LineChart, ArrowRight, Award, BarChart3, User, Rocket, Sparkles, PersonStanding, Brain, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ExamType } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 
 const ProfileCard = () => {
-  const { user, getUserStats } = useAppStore();
+  const { user, getUserStats, changeExamType } = useAppStore();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   if (!user) return null;
   
   const stats = getUserStats();
   const accuracy = stats.accuracyPercentage.toFixed(1);
   const questionsRemaining = user.monthlyQuestionsRemaining;
+  
+  const handleExamTypeChange = (value: string) => {
+    changeExamType(value as ExamType);
+    toast({
+      title: "Exam Type Changed",
+      description: `Your exam type has been updated to ${value}`,
+    });
+  };
   
   return (
     <motion.div
@@ -56,6 +68,28 @@ const ProfileCard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {/* Course Selector */}
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+              <BookOpen className="w-3 h-3 text-indigo-500" />
+              Change Exam Type
+            </label>
+            <Select 
+              defaultValue={user.examType} 
+              onValueChange={handleExamTypeChange}
+            >
+              <SelectTrigger className="bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700">
+                <SelectValue placeholder="Select exam type" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700">
+                <SelectItem value="UPSC">UPSC</SelectItem>
+                <SelectItem value="PSC">PSC</SelectItem>
+                <SelectItem value="SSC">SSC</SelectItem>
+                <SelectItem value="Banking">Banking</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-1">
