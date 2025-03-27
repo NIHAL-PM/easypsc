@@ -5,7 +5,7 @@ import { useQuestionStore } from './questionStore';
 
 // Google Gemini API configuration
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD4p5YZyQbQRDgu37WqIEl7QSXBn1O3p6s";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 interface GenerateQuestionsParams {
   examType: ExamType;
