@@ -1,374 +1,229 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
 import { useAppStore } from '@/lib/store';
-import UserSetup from '@/components/UserSetup';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionGenerator from '@/components/QuestionGenerator';
-import ProfileCard from '@/components/ProfileCard';
 import AnimatedLogo from '@/components/AnimatedLogo';
-import LoadingSpinner from '@/components/LoadingSpinner';
-import AdminPanel from '@/components/AdminPanel';
-import PremiumUpgrade from '@/components/PremiumUpgrade';
-import { generateQuestions } from '@/services/api';
-import { motion } from 'framer-motion';
-import { Menu, Bell, HelpCircle, Info, LogOut, Home, User, Settings } from 'lucide-react';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import ProfileCard from '@/components/ProfileCard';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle } from 'lucide-react';
+import { ExamType } from '@/types';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('practice');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, login, currentQuestion } = useAppStore();
   const { toast } = useToast();
-  const navigate = useNavigate();
   
-  const { 
-    user, 
-    currentQuestion,
-    questions,
-    isLoading,
-    setQuestions,
-    setCurrentQuestion,
-    askedQuestionIds,
-    logout
-  } = useAppStore();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPageLoading(false);
-    }, 2500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [examType, setExamType] = useState<ExamType>('UPSC');
   
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const adminParam = params.get('admin');
-    if (adminParam === 'true') {
-      setIsAdmin(true);
-    }
-  }, []);
+  // Validation for form
+  const [isNameValid, setIsNameValid] = useState(true);
+  const [isEmailValid, setIsEmailValid] = useState(true);
   
-  useEffect(() => {
-    const loadDemoQuestions = async () => {
-      if (user && !currentQuestion && questions.length === 0 && !isLoading) {
-        try {
-          const demoQuestions = await generateQuestions({
-            examType: user.examType,
-            difficulty: 'medium',
-            count: 3,
-            askedQuestionIds
-          });
-          
-          if (demoQuestions.length > 0) {
-            setQuestions(demoQuestions);
-            setCurrentQuestion(demoQuestions[0]);
-          }
-        } catch (error) {
-          console.error('Failed to load demo questions:', error);
-          toast({
-            title: "Failed to load questions",
-            description: "Please try again later or check your connection.",
-            variant: "destructive"
-          });
-        }
-      }
-    };
-    
-    loadDemoQuestions();
-  }, [user, currentQuestion, questions, isLoading, setQuestions, setCurrentQuestion, askedQuestionIds, toast]);
-  
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out"
-    });
-    window.location.reload();
+  const validateName = (value: string) => {
+    setIsNameValid(value.trim().length >= 3);
+    return value.trim().length >= 3;
   };
   
-  if (pageLoading) {
-    return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center">
-        <div className="backdrop-blur-lg bg-background/60 p-8 rounded-xl shadow-lg border border-primary/20 max-w-sm">
-          <div className="relative">
-            <AnimatedLogo />
-            <div className="mt-6">
-              <LoadingSpinner size="lg" color="primary" useAnimatedText={true} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const validateEmail = (value: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setIsEmailValid(emailRegex.test(value));
+    return emailRegex.test(value);
+  };
   
-  if (isAdmin) {
-    return <AdminPanel />;
-  }
+  const handleLogin = () => {
+    const nameValid = validateName(name);
+    const emailValid = validateEmail(email);
+    
+    if (!nameValid || !emailValid) {
+      toast({
+        title: "Validation error",
+        description: "Please check your name and email",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    login(name, email, examType);
+    
+    toast({
+      title: "Welcome!",
+      description: `You've joined as a ${examType} aspirant.`,
+    });
+  };
   
-  if (isUpgrading) {
-    return <PremiumUpgrade onClose={() => setIsUpgrading(false)} />;
-  }
-  
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 max-w-5xl">
-        <AnimatedLogo />
-        <UserSetup />
-      </div>
-    );
-  }
+  // Generate a random name for the user
+  const generateRandomUser = () => {
+    const randomNames = [
+      "Arjun Sharma", "Priya Patel", "Rahul Singh", "Neha Gupta", 
+      "Vikram Mehta", "Ananya Desai", "Raj Kapoor", "Divya Reddy"
+    ];
+    
+    const randomDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"];
+    
+    const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
+    const emailPrefix = randomName.toLowerCase().replace(/\s/g, ".");
+    const domain = randomDomains[Math.floor(Math.random() * randomDomains.length)];
+    
+    setName(randomName);
+    setEmail(`${emailPrefix}@${domain}`);
+    validateName(randomName);
+    validateEmail(`${emailPrefix}@${domain}`);
+  };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 pb-24">
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center justify-between px-4 max-w-5xl mx-auto">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="md:hidden mr-2" 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="hidden sm:block">
-              <AnimatedLogo />
-            </div>
-            <div className="sm:hidden">
-              <h2 className="text-lg font-semibold">EasyPSC</h2>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
+      {!user ? (
+        <div className="container mx-auto py-8 px-4 flex flex-col items-center">
+          <AnimatedLogo />
           
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-[10px] text-white">2</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72 bg-card/95 backdrop-blur-sm border border-border/40">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="max-h-[300px] overflow-auto">
-                  <div className="p-3 hover:bg-accent/50 rounded-md cursor-pointer transition-colors">
-                    <p className="text-sm font-medium">New questions available</p>
-                    <p className="text-xs text-muted-foreground">Your daily questions have been refreshed</p>
-                  </div>
-                  <div className="p-3 hover:bg-accent/50 rounded-md cursor-pointer transition-colors">
-                    <p className="text-sm font-medium">Premium offer</p>
-                    <p className="text-xs text-muted-foreground">50% off for the next 24 hours!</p>
-                  </div>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 flex items-center">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 flex items-center justify-center text-primary">
-                    {user?.name?.charAt(0)}
-                  </div>
-                  <span className="hidden md:inline-block">{user?.name}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-sm border border-border/40">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setActiveTab('profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                {user && !user.isPremium && (
-                  <DropdownMenuItem onClick={() => setIsUpgrading(true)}>
-                    <span>Upgrade to Premium</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/admin")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Admin Panel</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-      
-      <div className="container mx-auto px-4 pt-4 max-w-5xl">
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden mb-4 bg-card/95 backdrop-blur-sm rounded-lg border border-border/40 overflow-hidden"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="max-w-md w-full mx-auto mt-8"
           >
-            <div className="p-3 space-y-1">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-sm gap-2" 
-                onClick={() => {
-                  setActiveTab('practice');
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <Home size={16} />
-                Practice
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-sm gap-2" 
-                onClick={() => {
-                  setActiveTab('profile');
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <User size={16} />
-                Profile
-              </Button>
-              {user && !user.isPremium && (
+            <Card className="overflow-hidden border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm relative">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl text-indigo-700 dark:text-indigo-300">Join the Platform</CardTitle>
+                <CardDescription>
+                  Get started with your competitive exam preparation
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className={!isNameValid ? "text-red-500" : ""}>
+                    Full Name
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        validateName(e.target.value);
+                      }}
+                      placeholder="Enter your name"
+                      className={`pl-10 ${!isNameValid ? "border-red-500 focus:ring-red-500" : ""}`}
+                    />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  </div>
+                  {!isNameValid && (
+                    <p className="text-xs text-red-500">Name must be at least 3 characters</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email" className={!isEmailValid ? "text-red-500" : ""}>
+                    Email Address
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        validateEmail(e.target.value);
+                      }}
+                      placeholder="name@example.com"
+                      className={`pl-10 ${!isEmailValid ? "border-red-500 focus:ring-red-500" : ""}`}
+                    />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  </div>
+                  {!isEmailValid && (
+                    <p className="text-xs text-red-500">Please enter a valid email address</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="exam-type">
+                    Exam Type
+                  </Label>
+                  <Select
+                    value={examType}
+                    onValueChange={(value) => setExamType(value as ExamType)}
+                  >
+                    <SelectTrigger id="exam-type" className="pl-10 relative">
+                      <GitBranch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <SelectValue placeholder="Select exam type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UPSC">UPSC</SelectItem>
+                      <SelectItem value="PSC">PSC</SelectItem>
+                      <SelectItem value="SSC">SSC</SelectItem>
+                      <SelectItem value="Banking">Banking</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3">
                 <Button 
-                  variant="gradient" 
-                  size="sm"
-                  className="w-full mt-1" 
-                  onClick={() => {
-                    setIsUpgrading(true);
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={handleLogin} 
+                  className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl flex gap-2 btn-modern"
                 >
-                  Upgrade to Premium
+                  <span>Get Started</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
-              )}
+                
+                <Button 
+                  onClick={generateRandomUser}
+                  variant="outline"
+                  className="w-full border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                >
+                  Fill with Sample Data
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <div className="mt-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                By joining, you're getting:
+              </p>
+              <div className="flex justify-center gap-4 mt-2">
+                <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>AI-Generated Questions</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                  <Crown className="w-3 h-3" />
+                  <span>10 Free Questions Monthly</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                  <HelpCircle className="w-3 h-3" />
+                  <span>Detailed Explanations</span>
+                </div>
+              </div>
             </div>
           </motion.div>
-        )}
-        
-        <div className="flex justify-between items-center mb-4">
-          <Tabs 
-            value={activeTab} 
-            onValueChange={setActiveTab} 
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 sticky top-[3.5rem] z-10 bg-background/60 backdrop-blur-sm">
-              <TabsTrigger value="practice">Practice</TabsTrigger>
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="practice" className="space-y-4 mt-4">
-              {user && !user.isPremium && user.monthlyQuestionsRemaining < 5 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mb-3 p-3 bg-gradient-to-r from-amber-500/10 to-red-500/10 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2"
-                >
-                  <div>
-                    <h3 className="font-medium text-center sm:text-left text-sm">Limited questions remaining</h3>
-                    <p className="text-xs text-muted-foreground text-center sm:text-left">
-                      You have {user.monthlyQuestionsRemaining} questions left this month
-                    </p>
-                  </div>
-                  <Button onClick={() => setIsUpgrading(true)} variant="gradient-secondary" size="sm">
-                    Upgrade to Premium
-                  </Button>
-                </motion.div>
-              )}
-              
-              <div className="bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg p-3 p-mobile-4">
-                <QuestionGenerator />
-              </div>
-              
-              {currentQuestion ? (
-                <motion.div
-                  key={currentQuestion.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="relative"
-                >
-                  <QuestionCard />
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex flex-col items-center justify-center py-8 bg-card/95 backdrop-blur-sm border border-border/40 rounded-lg"
-                >
-                  <p className="text-muted-foreground mb-4 text-sm">
-                    No questions loaded. Generate some questions to start practicing!
-                  </p>
-                  <Button variant="gradient" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                    Generate Questions
-                  </Button>
-                </motion.div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="profile" className="mt-4">
-              <ProfileCard />
-              
-              {user && !user.isPremium && (
-                <div className="mt-4">
-                  <Button 
-                    onClick={() => setIsUpgrading(true)} 
-                    variant="gradient"
-                    className="w-full"
-                  >
-                    Upgrade to Premium
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
         </div>
-      </div>
-      
-      <footer className="fixed bottom-0 left-0 right-0 border-t border-border/40 bg-card/95 backdrop-blur-sm py-1.5 px-3 text-center text-xs text-muted-foreground z-10">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-1">
-          <p>© {new Date().getFullYear()} EasyPSC</p>
-          <div className="flex gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => toast({ 
-                title: "Privacy Policy", 
-                description: "Your data is secure and never shared with third parties." 
-              })}
-              className="text-xs h-7 px-2"
-            >
-              Privacy
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => toast({ 
-                title: "Terms of Service", 
-                description: "By using this service, you agree to our terms and conditions." 
-              })}
-              className="text-xs h-7 px-2"
-            >
-              Terms
-            </Button>
+      ) : (
+        <div className="container mx-auto py-6 px-4">
+          <AnimatedLogo />
+          
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <ProfileCard />
+            </div>
+            
+            <div className="md:col-span-2 space-y-6">
+              {!currentQuestion ? (
+                <QuestionGenerator />
+              ) : (
+                <QuestionCard />
+              )}
+            </div>
           </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 };

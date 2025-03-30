@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
@@ -7,39 +7,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2Icon, CheckCircle2Icon, XCircleIcon, Crown, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
+import { Loader2Icon, Crown, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
-interface PremiumUpgradeProps {
-  onClose?: () => void;
-}
-
-const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
+const PremiumUpgrade = () => {
   const { user, upgradeUserToPremium } = useAppStore();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
   const navigate = useNavigate();
-  
-  useEffect(() => {
-    // Load Razorpay script
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => setIsRazorpayLoaded(true);
-    document.body.appendChild(script);
-    
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
   
   const handleUpgrade = () => {
     if (!user) {
@@ -54,82 +28,23 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
     
     setIsProcessing(true);
     
-    if (isRazorpayLoaded) {
-      // Create a new Razorpay instance
-      const options = {
-        key: 'rzp_test_lTcXyVVQB3TJHc', // Replace with your actual Razorpay test key
-        amount: 999 * 100, // Amount in paise (999 INR)
-        currency: 'INR',
-        name: 'EasyPSC',
-        description: 'Premium Subscription',
-        image: '/logo.png',
-        handler: function(response: any) {
-          // Handle successful payment
-          if (response.razorpay_payment_id) {
-            upgradeUserToPremium(user.id);
-            
-            toast({
-              title: "Upgrade Successful!",
-              description: "You now have access to premium features.",
-            });
-            
-            if (onClose) {
-              onClose();
-            } else {
-              navigate('/');
-            }
-          }
-          setIsProcessing(false);
-        },
-        prefill: {
-          name: user.name,
-          email: user.email,
-        },
-        theme: {
-          color: '#6366f1', // Indigo color
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "You can upgrade to premium anytime.",
-              variant: "default"
-            });
-          }
-        }
-      };
+    // Simulate payment processing
+    setTimeout(() => {
+      upgradeUserToPremium(user.id);
       
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      // Fallback if Razorpay is not loaded
-      // Simulate payment processing
-      setTimeout(() => {
-        upgradeUserToPremium(user.id);
-        
-        setIsProcessing(false);
-        
-        toast({
-          title: "Upgrade Successful!",
-          description: "You now have access to premium features.",
-        });
-        
-        if (onClose) {
-          onClose();
-        } else {
-          navigate('/');
-        }
-      }, 2000);
-    }
+      setIsProcessing(false);
+      
+      toast({
+        title: "Upgrade Successful!",
+        description: "You now have access to premium features.",
+      });
+      
+      navigate('/');
+    }, 2000);
   };
   
   const handleGoBack = () => {
-    if (onClose) {
-      onClose();
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
   
   return (
@@ -171,7 +86,7 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
               <p className="text-muted-foreground text-sm mb-4">
                 Unlimited questions, detailed analytics, and priority support.
               </p>
-              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">₹999/month</div>
+              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">₹20/month</div>
               <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400 mt-4">
                 <li className="flex items-center gap-2">
                   <Infinity className="w-4 h-4 text-indigo-500" />
@@ -193,13 +108,15 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
               <Button 
                 className="w-full mt-5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl text-white" 
                 onClick={handleUpgrade}
-                disabled={isProcessing}
+                disabled={isProcessing || (user && user.isPremium)}
               >
                 {isProcessing ? (
                   <>
                     <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
                     Processing...
                   </>
+                ) : user && user.isPremium ? (
+                  "Already Premium"
                 ) : (
                   <>
                     <Zap className="mr-2 h-4 w-4" />
@@ -208,21 +125,6 @@ const PremiumUpgrade = ({ onClose }: PremiumUpgradeProps = {}) => {
                 )}
               </Button>
             </div>
-            
-            {/* Confirmation/Error Message */}
-            {isProcessing && (
-              <div className="text-center text-muted-foreground">
-                <Loader2Icon className="inline-block mr-2 h-5 w-5 animate-spin" />
-                Processing your upgrade...
-              </div>
-            )}
-            
-            {user && user.isPremium && (
-              <div className="text-center text-emerald-500 dark:text-emerald-400">
-                <CheckCircle2Icon className="inline-block mr-2 h-5 w-5" />
-                You are already a premium member!
-              </div>
-            )}
             
             {/* Back Button */}
             <Button 

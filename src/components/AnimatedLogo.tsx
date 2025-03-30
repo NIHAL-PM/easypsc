@@ -27,10 +27,10 @@ const AnimatedLogo = () => {
         className="flex items-center"
       >
         <div className="relative">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Easy
           </h1>
-          <div className="absolute -bottom-1 left-0 h-0.5 w-full bg-gradient-to-r from-violet-600 to-purple-600 rounded-full"></div>
+          <div className="absolute -bottom-1 left-0 h-0.5 w-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"></div>
         </div>
         
         <motion.div
@@ -39,7 +39,7 @@ const AnimatedLogo = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3 }}
-          className="text-4xl font-bold text-violet-800 dark:text-violet-300 ml-2"
+          className="text-4xl font-bold text-indigo-800 dark:text-indigo-300 ml-2"
         >
           {examTypes[currentExamType]}
         </motion.div>
@@ -51,7 +51,7 @@ const AnimatedLogo = () => {
         transition={{ delay: 0.2, duration: 0.5 }}
         className="text-muted-foreground mt-2 text-center flex items-center justify-center gap-2"
       >
-        <GraduationCap className="w-4 h-4 text-violet-500" />
+        <GraduationCap className="w-4 h-4 text-indigo-500" />
         <span>Your AI-Powered Question Bank for Competitive Exams</span>
       </motion.div>
     </div>

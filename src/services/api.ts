@@ -1,91 +1,40 @@
 
-import { Question, ExamType } from '@/types';
-import { useAppStore } from '@/lib/store';
-import { useQuestionStore } from './questionStore';
+import { Question, ExamType, QuestionDifficulty } from '@/types';
 
-// Google Gemini API configuration
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD4p5YZyQbQRDgu37WqIEl7QSXBn1O3p6s";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-
-interface GenerateQuestionsParams {
+interface GenerateQuestionsOptions {
   examType: ExamType;
-  difficulty: string;
+  difficulty: QuestionDifficulty;
   count: number;
-  category?: string;
-  askedQuestionIds?: string[]; // Added parameter to track already asked questions
+  askedQuestionIds?: string[];
 }
 
-export async function generateQuestions({
+interface UserActivityTrackingOptions {
+  action: string;
+  details: Record<string, any>;
+}
+
+/**
+ * Generates AI-powered questions using the Gemini 1.5 Flash API
+ */
+export const generateQuestions = async ({
   examType,
   difficulty,
   count,
-  category,
   askedQuestionIds = []
-}: GenerateQuestionsParams): Promise<Question[]> {
+}: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
-    // First check for custom questions in the store
-    const questionStore = useQuestionStore.getState();
-    const customQuestions = questionStore.getQuestionsByExamType(examType, difficulty)
-      .filter(q => !askedQuestionIds.includes(q.id));
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     
-    // If we have enough custom questions, use those first
-    if (customQuestions.length >= count) {
-      console.log("Using custom questions from the store");
-      return customQuestions.slice(0, count);
+    if (!GEMINI_API_KEY) {
+      console.error('Gemini API key not configured.');
+      // Return sample questions when API key is not available
+      return getSampleQuestions(examType, difficulty, count);
     }
     
-    // If we have some custom questions but not enough, use what we have and get the rest from API
-    if (customQuestions.length > 0 && customQuestions.length < count) {
-      console.log(`Using ${customQuestions.length} custom questions, fetching ${count - customQuestions.length} more from API`);
-      
-      // Get the remaining questions from API or mock data
-      const apiCount = count - customQuestions.length;
-      const apiLanguage = examType === 'PSC' ? 'Malayalam' : 'English';
-      
-      const remainingQuestions = await fetchQuestionsFromAPI(
-        examType,
-        difficulty,
-        apiCount,
-        askedQuestionIds,
-        apiLanguage
-      );
-      
-      return [...customQuestions, ...remainingQuestions];
-    }
-    
-    // If no custom questions available, get all from API or mock data
-    console.log("No matching custom questions, fetching from API");
-    const apiLanguage = examType === 'PSC' ? 'Malayalam' : 'English';
-    
-    return await fetchQuestionsFromAPI(
-      examType,
-      difficulty,
-      count,
-      askedQuestionIds,
-      apiLanguage
-    );
-  } catch (error) {
-    console.error("Error generating questions:", error);
-    // Return mock questions as fallback
-    return getMockQuestions(examType, difficulty, count, askedQuestionIds);
-  }
-}
-
-async function fetchQuestionsFromAPI(
-  examType: ExamType,
-  difficulty: string,
-  count: number,
-  askedQuestionIds: string[] = [],
-  language: string = 'English'
-): Promise<Question[]> {
-  try {
-    const languageInstruction = language === 'Malayalam' 
-      ? 'Generate questions in Malayalam language for Kerala PSC exam.' 
-      : 'Generate questions in English.';
-      
+    // Prepare the prompt for Gemini
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
-    ${languageInstruction}
+    Generate questions in English.
     
     Important: Generate completely new and unique questions that have not been used before.
     
@@ -106,8 +55,9 @@ async function fetchQuestionsFromAPI(
       "category": "subject/category",
       "difficulty": "${difficulty}"
     }`;
-
-    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+    
+    // Call the Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,236 +74,192 @@ async function fetchQuestionsFromAPI(
         ]
       })
     });
-
+    
     if (!response.ok) {
-      console.error(`API request failed with status: ${response.status}`);
-      throw new Error(`API request failed with status: ${response.status}`);
+      const errorData = await response.json();
+      console.error('Gemini API error:', errorData);
+      throw new Error(`API error: ${response.status}`);
     }
-
+    
     const data = await response.json();
     
-    // Extract the text from the response
-    const text = data.candidates[0].content.parts[0].text;
+    // Extract the content from the response
+    const jsonContent = data.candidates[0].content.parts[0].text;
     
-    // Find the JSON part in the text
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      // Fallback to mock data if no JSON found
-      return getMockQuestions(examType, difficulty, count, askedQuestionIds);
+    // Extract the JSON array from the response (handling markdown code blocks if present)
+    const jsonRegex = /```(?:json)?([\s\S]*?)```|(\[[\s\S]*\])/;
+    const match = jsonRegex.exec(jsonContent);
+    
+    if (!match) {
+      throw new Error('Failed to parse JSON response from API');
     }
     
-    try {
-      const questionsJson = JSON.parse(jsonMatch[0]);
-      
-      // Ensure each question has an id and filter out any questions that have been asked before
-      const newQuestions = questionsJson
-        .map((q: any, index: number) => ({
-          ...q,
-          id: q.id || `q-${Date.now()}-${index}`,
-        }))
-        .filter((q: Question) => !askedQuestionIds.includes(q.id));
-      
-      // If we don't have enough new questions, generate more
-      if (newQuestions.length < count) {
-        console.log("Not enough unique questions, generating more...");
-        const moreQuestions = await getMockQuestions(
-          examType, 
-          difficulty, 
-          count - newQuestions.length, 
-          [...askedQuestionIds, ...newQuestions.map(q => q.id)]
-        );
-        return [...newQuestions, ...moreQuestions];
-      }
-      
-      return newQuestions;
-    } catch (parseError) {
-      console.error("Error parsing JSON from API response:", parseError);
-      return getMockQuestions(examType, difficulty, count, askedQuestionIds);
-    }
+    const questionsJson = match[1]?.trim() || match[2]?.trim() || match[0]?.trim();
+    const questions = JSON.parse(questionsJson) as Question[];
     
+    // Filter out questions that have already been asked
+    const filteredQuestions = questions.filter(q => !askedQuestionIds.includes(q.id));
+    
+    return filteredQuestions.slice(0, count);
   } catch (error) {
-    console.error("Error generating questions:", error);
-    // Return mock questions as fallback
-    return getMockQuestions(examType, difficulty, count, askedQuestionIds);
+    console.error('Error generating questions:', error);
+    // Fallback to sample questions if API fails
+    return getSampleQuestions(examType, difficulty, count);
   }
-}
+};
 
-// Mock questions for fallback
-function getMockQuestions(
+/**
+ * Tracks user activity for analytics
+ */
+export const trackUserActivity = (
+  userId: string,
+  action: string,
+  details: Record<string, any> = {}
+) => {
+  // In a real app, this would send data to a backend API
+  // For now, we'll just log it
+  console.log('User activity:', {
+    userId,
+    action,
+    details,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Return a resolved promise to mimic an async call
+  return Promise.resolve(true);
+};
+
+/**
+ * Returns sample questions for testing when API is not available
+ */
+const getSampleQuestions = (
   examType: ExamType, 
-  difficulty: string, 
-  count: number, 
-  askedQuestionIds: string[] = []
-): Question[] {
-  let allMockQuestions: Question[] = [];
+  difficulty: QuestionDifficulty, 
+  count: number
+): Question[] => {
+  const sampleQuestions: Record<ExamType, Question[]> = {
+    'UPSC': [
+      {
+        id: 'upsc-sample-1',
+        text: 'Which of the following is NOT a Fundamental Right guaranteed by the Indian Constitution?',
+        options: [
+          'Right to Equality',
+          'Right to Property',
+          'Right to Freedom',
+          'Right to Constitutional Remedies'
+        ],
+        correctOption: 1,
+        explanation: 'Right to Property was originally a Fundamental Right but was removed from the list by the 44th Amendment in 1978. It is now a legal right under Article 300A.',
+        category: 'Indian Polity',
+        difficulty: difficulty
+      },
+      {
+        id: 'upsc-sample-2',
+        text: 'The concept of "Judicial Review" in India has been borrowed from which country\'s constitution?',
+        options: [
+          'United Kingdom',
+          'United States',
+          'Canada',
+          'Australia'
+        ],
+        correctOption: 1,
+        explanation: 'The concept of Judicial Review has been borrowed from the United States. It empowers the judiciary to review the constitutionality of legislative and executive actions.',
+        category: 'Indian Polity',
+        difficulty: difficulty
+      }
+    ],
+    'PSC': [
+      {
+        id: 'psc-sample-1',
+        text: 'Which among the following rivers does NOT flow through Kerala?',
+        options: [
+          'Periyar',
+          'Bharathapuzha',
+          'Cauvery',
+          'Pamba'
+        ],
+        correctOption: 2,
+        explanation: 'Cauvery flows mainly through Karnataka and Tamil Nadu, not through Kerala. The other rivers mentioned - Periyar, Bharathapuzha, and Pamba - are major rivers in Kerala.',
+        category: 'Kerala Geography',
+        difficulty: difficulty
+      },
+      {
+        id: 'psc-sample-2',
+        text: 'Who was the first Chief Minister of Kerala?',
+        options: [
+          'E.M.S. Namboodiripad',
+          'K. Karunakaran',
+          'A.K. Antony',
+          'C. Achutha Menon'
+        ],
+        correctOption: 0,
+        explanation: 'E.M.S. Namboodiripad was the first Chief Minister of Kerala. He assumed office on April 5, 1957, after the first Kerala Legislative Assembly election.',
+        category: 'Kerala History',
+        difficulty: difficulty
+      }
+    ],
+    'SSC': [
+      {
+        id: 'ssc-sample-1',
+        text: 'If a person walks at 4 km/hr, he reaches his office 8 minutes early. If he walks at a speed of 3 km/hr, he reaches 7 minutes late. What is the exact distance of his office?',
+        options: [
+          '2 km',
+          '3 km',
+          '4 km',
+          '5 km'
+        ],
+        correctOption: 0,
+        explanation: 'Let the distance be d km and the exact time be t hr. Then, d/4 + (8/60) = t and d/3 - (7/60) = t. Solving these equations, we get d = 2 km.',
+        category: 'Quantitative Aptitude',
+        difficulty: difficulty
+      },
+      {
+        id: 'ssc-sample-2',
+        text: 'Which of the following is the antonym of ZENITH?',
+        options: [
+          'Apex',
+          'Nadir',
+          'Pinnacle',
+          'Summit'
+        ],
+        correctOption: 1,
+        explanation: 'Nadir means the lowest point and is the antonym of Zenith, which means the highest point or culmination.',
+        category: 'English Language',
+        difficulty: difficulty
+      }
+    ],
+    'Banking': [
+      {
+        id: 'banking-sample-1',
+        text: 'In which of the following types of banking, banks provide locker facilities, ATM services, and accept deposits?',
+        options: [
+          'Retail Banking',
+          'Corporate Banking',
+          'Investment Banking',
+          'Universal Banking'
+        ],
+        correctOption: 0,
+        explanation: 'Retail Banking involves providing services to individual customers including locker facilities, ATM services, and accepting deposits.',
+        category: 'Banking Awareness',
+        difficulty: difficulty
+      },
+      {
+        id: 'banking-sample-2',
+        text: 'Which committee is associated with the reforms in the Insurance sector in India?',
+        options: [
+          'Abid Hussain Committee',
+          'Chakravarty Committee',
+          'Malhotra Committee',
+          'Narasimham Committee'
+        ],
+        correctOption: 2,
+        explanation: 'The Malhotra Committee, headed by R.N. Malhotra, former RBI Governor, was formed to propose recommendations for reforms in the Insurance sector in India.',
+        category: 'Financial Awareness',
+        difficulty: difficulty
+      }
+    ]
+  };
   
-  // General questions for all exam types
-  const generalQuestions: Question[] = [
-    {
-      id: "q1",
-      text: "Which article of the Indian Constitution abolishes untouchability?",
-      options: [
-        "Article 14", 
-        "Article 15", 
-        "Article 17", 
-        "Article 21"
-      ],
-      correctOption: 2,
-      explanation: "Article 17 of the Indian Constitution abolishes the practice of untouchability in any form. It makes the enforcement of any disability arising out of untouchability a punishable offense.",
-      category: "Indian Constitution",
-      difficulty: "medium",
-    },
-    {
-      id: "q2",
-      text: "The concept of Welfare State is included in which part of the Indian Constitution?",
-      options: [
-        "Preamble", 
-        "Fundamental Rights", 
-        "Directive Principles of State Policy", 
-        "Fundamental Duties"
-      ],
-      correctOption: 2,
-      explanation: "The concept of a Welfare State is embodied in the Directive Principles of State Policy (Part IV, Articles 36-51) of the Indian Constitution, which set forth the humanitarian and socialist principles that the state should follow.",
-      category: "Indian Constitution",
-      difficulty: "medium",
-    },
-    {
-      id: "q3",
-      text: "Which of the following rivers does NOT originate in India?",
-      options: [
-        "Godavari", 
-        "Brahmaputra", 
-        "Mahanadi", 
-        "Kaveri"
-      ],
-      correctOption: 1,
-      explanation: "The Brahmaputra originates in the Mansarovar Lake region in Tibet (China) as the Yarlung Tsangpo River. It enters India through Arunachal Pradesh and then flows through Assam.",
-      category: "Geography",
-      difficulty: "medium",
-    },
-    {
-      id: "q4",
-      text: "Who among the following founded the 'Servants of India Society'?",
-      options: [
-        "Bal Gangadhar Tilak", 
-        "Gopal Krishna Gokhale", 
-        "Bipin Chandra Pal", 
-        "Lala Lajpat Rai"
-      ],
-      correctOption: 1,
-      explanation: "Gopal Krishna Gokhale founded the Servants of India Society in 1905 to promote education and social reform. It was the first secular organization in India to devote itself to the cause of the common people.",
-      category: "Modern Indian History",
-      difficulty: "medium",
-    },
-    {
-      id: "q5",
-      text: "Which of the following is NOT a member of the BRICS group?",
-      options: [
-        "Brazil", 
-        "Russia", 
-        "Indonesia", 
-        "South Africa"
-      ],
-      correctOption: 2,
-      explanation: "BRICS is an association of five major emerging economies: Brazil, Russia, India, China, and South Africa. Indonesia is not a member of BRICS; it's a part of other groupings like ASEAN and G20.",
-      category: "International Relations",
-      difficulty: "easy",
-    }
-  ];
-  
-  // Malayalam questions for Kerala PSC
-  const keralaPscQuestions: Question[] = [
-    {
-      id: "kpsc-mock-1",
-      text: "കേരളത്തിന്റെ ആദ്യ മുഖ്യമന്ത്രി ആരായിരുന്നു?",
-      options: [
-        "ഇ.എം.എസ്. നമ്പൂതിരിപ്പാട്", 
-        "പട്ടം താണു പിള്ള", 
-        "സി. അച്യുത മേനോൻ", 
-        "ആർ. ശങ്കർ"
-      ],
-      correctOption: 0,
-      explanation: "ഇ.എം.എസ്. നമ്പൂതിരിപ്പാട് ആയിരുന്നു കേരളത്തിന്റെ ആദ്യ മുഖ്യമന്ത്രി. 1957 ഏപ്രിൽ 5 മുതൽ 1959 ജൂലൈ 31 വരെ അദ്ദേഹം മുഖ്യമന്ത്രിയായി സേവനമനുഷ്ഠിച്ചു.",
-      category: "കേരള ചരിത്രം",
-      difficulty: "easy",
-    },
-    {
-      id: "kpsc-mock-2",
-      text: "കേരള സംസ്ഥാനം രൂപീകരിച്ചത് എന്നാണ്?",
-      options: [
-        "1956 നവംബർ 1", 
-        "1957 ജനുവരി 26", 
-        "1950 ജനുവരി 26", 
-        "1947 ഓഗസ്റ്റ് 15"
-      ],
-      correctOption: 0,
-      explanation: "കേരള സംസ്ഥാനം 1956 നവംബർ 1-ന് രൂപീകരിച്ചു. ഇത് സംസ്ഥാന പുനഃസംഘടനാ നിയമത്തിന്റെ ഭാഗമായിരുന്നു.",
-      category: "കേരള ചരിത്രം",
-      difficulty: "easy",
-    },
-    {
-      id: "kpsc-mock-3",
-      text: "താഴെ പറയുന്നവയിൽ ഏതാണ് കേരളത്തിലെ ഏറ്റവും നീളം കൂടിയ നദി?",
-      options: [
-        "പമ്പ", 
-        "പെരിയാർ", 
-        "ഭാരതപ്പുഴ", 
-        "കബനി"
-      ],
-      correctOption: 1,
-      explanation: "പെരിയാർ ആണ് കേരളത്തിലെ ഏറ്റവും നീളം കൂടിയ നദി, ഏകദേശം 244 കിലോമീറ്റർ നീളമുണ്ട്.",
-      category: "കേരള ഭൂമിശാസ്ത്രം",
-      difficulty: "medium",
-    },
-  ];
-  
-  // Select appropriate questions based on exam type
-  if (examType === 'PSC') {
-    allMockQuestions = keralaPscQuestions;
-  } else {
-    allMockQuestions = generalQuestions;
-  }
-  
-  // Filter by difficulty if specified
-  if (difficulty) {
-    allMockQuestions = allMockQuestions.filter(q => q.difficulty === difficulty);
-  }
-  
-  // Filter out questions that have already been asked
-  const availableQuestions = allMockQuestions.filter(
-    q => !askedQuestionIds.includes(q.id)
-  );
-  
-  // If we need more questions than available, generate some with unique IDs
-  if (availableQuestions.length < count) {
-    const additionalQuestions: Question[] = [];
-    
-    for (let i = 0; i < count - availableQuestions.length; i++) {
-      // Copy a question but give it a new ID
-      const baseQuestion = allMockQuestions[i % allMockQuestions.length];
-      additionalQuestions.push({
-        ...baseQuestion,
-        id: `q-${Date.now()}-${i}`,
-        text: `${baseQuestion.text} (variant ${i+1})` // Slightly modify the question
-      });
-    }
-    
-    return [...availableQuestions, ...additionalQuestions].slice(0, count);
-  }
-  
-  return availableQuestions.slice(0, count);
-}
-
-// User tracking functionality
-export async function trackUserActivity(userId: string, action: string, metadata: Record<string, any>) {
-  try {
-    // In a real application, this would send data to your analytics backend
-    console.log("User tracking:", { userId, action, metadata, timestamp: new Date() });
-    
-    // Mock successful tracking
-    return { success: true };
-  } catch (error) {
-    console.error("Error tracking user activity:", error);
-    return { success: false, error };
-  }
-}
+  // Return a subset of the sample questions
+  return sampleQuestions[examType].slice(0, count);
+};

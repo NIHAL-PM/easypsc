@@ -58,7 +58,7 @@ const QuestionGenerator = () => {
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
-        difficulty,
+        difficulty: difficulty as any,
         count,
         askedQuestionIds // Pass the IDs of questions that have already been asked
       });
@@ -169,22 +169,17 @@ const QuestionGenerator = () => {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-between">
           <Button 
             variant="default"
-            onClick={handleGenerateQuestions} 
-            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all duration-300 rounded-lg text-white shadow-md hover:shadow-xl"
-            disabled={isLoading || (!user?.isPremium && user?.monthlyQuestionsRemaining <= 0)}
+            onClick={handleGenerateQuestions}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating...
-              </>
-            ) : !user?.isPremium ? (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate Questions ({user?.monthlyQuestionsRemaining || 0} remaining)
               </>
             ) : (
               <>

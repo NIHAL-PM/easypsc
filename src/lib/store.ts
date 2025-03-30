@@ -1,261 +1,212 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Question, QuestionAttempt, UserStats, ExamType } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
+import { AppState, ExamType, Question, User, UserStats } from '@/types';
 
-interface AppState {
-  user: User | null;
-  currentQuestion: Question | null;
-  questionHistory: QuestionAttempt[];
-  questions: Question[];
-  isLoading: boolean;
-  selectedOption: number | null;
-  showExplanation: boolean;
-  askedQuestionIds: string[]; // Track asked question IDs
-  
-  // User actions
+export const useAppStore = create<AppState & {
+  login: (name: string, email: string, examType: ExamType) => void;
   setUser: (user: User) => void;
-  updateUserStats: (attempt: QuestionAttempt) => void;
-  changeExamType: (examType: ExamType) => void; // New function to change exam type
   logout: () => void;
-  
-  // Question actions
+  upgradeUserToPremium: (userId: string) => void;
+  addUser: (user: User) => void;
   setQuestions: (questions: Question[]) => void;
   setCurrentQuestion: (question: Question) => void;
   selectOption: (optionIndex: number) => void;
   submitAnswer: () => void;
   nextQuestion: () => void;
-  resetQuiz: () => void;
-  toggleExplanation: () => void;
-  
-  // Loading state
   setIsLoading: (isLoading: boolean) => void;
-  
-  // Stats
   getUserStats: () => UserStats;
-  
-  // Admin actions
-  allUsers: User[];
-  addUser: (user: User) => void;
-  upgradeUserToPremium: (userId: string) => void;
-}
+  changeExamType: (examType: ExamType) => void;
+}>(persist((set, get) => ({
+  // Initial state
+  user: null,
+  allUsers: [],
+  questions: [],
+  currentQuestion: null,
+  selectedOption: null,
+  isLoading: false,
+  showExplanation: false,
+  askedQuestionIds: [],
 
-// Generate a unique user ID if not already present
-const generateUserId = () => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-};
-
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      currentQuestion: null,
-      questionHistory: [],
-      questions: [],
-      isLoading: false,
-      selectedOption: null,
-      showExplanation: false,
-      allUsers: [],
-      askedQuestionIds: [], // Initialize empty array for tracking asked questions
-      
-      setUser: (user) => {
-        // Keep the user's existing premium status and question limits
-        const userWithId = {
-          ...user,
-          // Only set default questions if not already set
-          monthlyQuestionsRemaining: user.monthlyQuestionsRemaining || 20,
-        };
-        
-        set({ user: userWithId });
-        
-        // Also add this user to allUsers if not already there
-        const { allUsers } = get();
-        if (!allUsers.some(u => u.id === userWithId.id)) {
-          set({ allUsers: [...allUsers, userWithId] });
-        }
-      },
-      
-      updateUserStats: (attempt) => {
-        const { user, allUsers } = get();
-        
-        if (!user) return;
-        
-        let updatedQuestionsRemaining = user.monthlyQuestionsRemaining;
-        
-        // Only decrement questions for non-premium users
-        if (!user.isPremium && updatedQuestionsRemaining > 0) {
-          updatedQuestionsRemaining -= 1;
-        }
-        
-        const updatedUser = {
-          ...user,
-          questionsAnswered: user.questionsAnswered + 1,
-          questionsCorrect: attempt.isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
-          monthlyQuestionsRemaining: updatedQuestionsRemaining
-        };
-        
-        // Update both the current user and in the all users array
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === updatedUser.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers,
-          questionHistory: [...get().questionHistory, attempt]
-        });
-      },
-      
-      changeExamType: (examType) => {
-        const { user, allUsers } = get();
-        
-        if (!user) return;
-        
-        const updatedUser = {
-          ...user,
-          examType
-        };
-        
-        // Update both the current user and in the all users array
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === updatedUser.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers,
-          questions: [], // Clear questions when changing exam type
-          currentQuestion: null,
-          askedQuestionIds: [] // Clear asked questions when changing exam type
-        });
-      },
-      
-      logout: () => set({ 
-        user: null,
-        currentQuestion: null,
-        questionHistory: [],
-        questions: [],
-        selectedOption: null,
-        showExplanation: false,
-        askedQuestionIds: [] // Clear asked questions when logging out
-      }),
-      
-      setQuestions: (questions) => {
-        // Update askedQuestionIds with the IDs of the new questions
-        const newQuestionIds = questions.map(q => q.id);
-        set(state => ({
-          questions,
-          askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
-        }));
-      },
-      
-      setCurrentQuestion: (question) => set({ 
-        currentQuestion: question,
-        selectedOption: null,
-        showExplanation: false
-      }),
-      
-      selectOption: (optionIndex) => set({ selectedOption: optionIndex }),
-      
-      submitAnswer: () => {
-        const { currentQuestion, selectedOption, user } = get();
-        
-        if (!currentQuestion || selectedOption === null || !user) return;
-        
-        const isCorrect = selectedOption === currentQuestion.correctOption;
-        
-        const attempt: QuestionAttempt = {
-          questionId: currentQuestion.id,
-          selectedOption,
-          isCorrect,
-          timestamp: new Date()
-        };
-        
-        get().updateUserStats(attempt);
-        set({ showExplanation: true });
-      },
-      
-      nextQuestion: () => {
-        const { questions, currentQuestion } = get();
-        
-        if (!questions.length || !currentQuestion) return;
-        
-        const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
-        const nextIndex = (currentIndex + 1) % questions.length;
-        
-        set({ 
-          currentQuestion: questions[nextIndex],
-          selectedOption: null,
-          showExplanation: false
-        });
-      },
-      
-      resetQuiz: () => set({ 
-        currentQuestion: get().questions[0] || null,
-        selectedOption: null,
-        showExplanation: false
-      }),
-      
-      toggleExplanation: () => set({ showExplanation: !get().showExplanation }),
-      
-      setIsLoading: (isLoading) => set({ isLoading }),
-      
-      getUserStats: () => {
-        const { questionHistory } = get();
-        
-        const totalAnswered = questionHistory.length;
-        const correctAnswers = questionHistory.filter(q => q.isCorrect).length;
-        const incorrectAnswers = totalAnswered - correctAnswers;
-        const accuracyPercentage = totalAnswered > 0 ? (correctAnswers / totalAnswered) * 100 : 0;
-        
-        // Calculate category breakdown
-        const categoryBreakdown: UserStats['categoryBreakdown'] = {};
-        
-        // We would need to match question IDs with actual questions to get categories
-        // This is simplified and would need to be expanded in a real application
-        
-        return {
-          totalAnswered,
-          correctAnswers,
-          incorrectAnswers,
-          accuracyPercentage,
-          categoryBreakdown
-        };
-      },
-      
-      // Admin actions
-      addUser: (user) => {
-        const { allUsers } = get();
-        set({ allUsers: [...allUsers, user] });
-      },
-      
-      upgradeUserToPremium: (userId) => {
-        const { allUsers, user } = get();
-        
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === userId 
-            ? { ...u, isPremium: true, monthlyQuestionsRemaining: 999999 } 
-            : u
-        );
-        
-        // Also update the current user if they're the one being upgraded
-        const updatedCurrentUser = user && user.id === userId 
-          ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999999 }
-          : user;
-        
-        set({ 
-          allUsers: updatedAllUsers,
-          user: updatedCurrentUser
-        });
-      }
-    }),
-    {
-      name: 'question-bank-storage', // name for localStorage
-      partialize: (state) => ({
-        user: state.user,
-        questionHistory: state.questionHistory,
-        allUsers: state.allUsers,
-        askedQuestionIds: state.askedQuestionIds,
-      }),
+  // Actions
+  login: (name, email, examType) => {
+    const { allUsers } = get();
+    
+    // Check if user already exists
+    const existingUser = allUsers.find(user => user.email === email);
+    
+    if (existingUser) {
+      set({ user: existingUser });
+      return;
     }
-  )
-);
+    
+    // Create new user
+    const newUser: User = {
+      id: uuidv4(),
+      name,
+      email,
+      examType,
+      isPremium: false,
+      monthlyQuestionsRemaining: 10,  // Free tier limit
+      questionsAnswered: 0,
+      questionsCorrect: 0,
+      currentStreak: 0,
+      lastActive: new Date()
+    };
+    
+    set(state => ({ 
+      user: newUser,
+      allUsers: [...state.allUsers, newUser]
+    }));
+  },
+  
+  setUser: (user) => set({ user }),
+  
+  logout: () => set({ user: null }),
+  
+  upgradeUserToPremium: (userId) => set(state => {
+    // Update the user in allUsers
+    const updatedUsers = state.allUsers.map(user => 
+      user.id === userId 
+        ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 } 
+        : user
+    );
+    
+    // Update current user if it's the same user
+    const currentUser = state.user && state.user.id === userId
+      ? { ...state.user, isPremium: true, monthlyQuestionsRemaining: 999 }
+      : state.user;
+    
+    return { 
+      allUsers: updatedUsers,
+      user: currentUser
+    };
+  }),
+  
+  addUser: (user) => set(state => ({ 
+    allUsers: [...state.allUsers, user] 
+  })),
+  
+  setQuestions: (questions) => set({ 
+    questions,
+    askedQuestionIds: [...get().askedQuestionIds, ...questions.map(q => q.id)]
+  }),
+  
+  setCurrentQuestion: (question) => set({ 
+    currentQuestion: question,
+    selectedOption: null,
+    showExplanation: false
+  }),
+  
+  selectOption: (optionIndex) => set({ 
+    selectedOption: optionIndex 
+  }),
+  
+  submitAnswer: () => {
+    const { user, currentQuestion, selectedOption } = get();
+    
+    if (!user || !currentQuestion || selectedOption === null) return;
+    
+    const isCorrect = selectedOption === currentQuestion.correctOption;
+    
+    // Update user stats
+    const updatedUser = {
+      ...user,
+      questionsAnswered: user.questionsAnswered + 1,
+      questionsCorrect: isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
+      monthlyQuestionsRemaining: user.isPremium 
+        ? user.monthlyQuestionsRemaining 
+        : Math.max(0, user.monthlyQuestionsRemaining - 1),
+      lastActive: new Date()
+    };
+    
+    // Update allUsers as well
+    const updatedAllUsers = get().allUsers.map(u => 
+      u.id === user.id ? updatedUser : u
+    );
+    
+    set({ 
+      user: updatedUser,
+      allUsers: updatedAllUsers,
+      showExplanation: true
+    });
+  },
+  
+  nextQuestion: () => {
+    const { questions, currentQuestion } = get();
+    
+    if (!currentQuestion || questions.length <= 1) {
+      set({ 
+        currentQuestion: null,
+        selectedOption: null,
+        showExplanation: false
+      });
+      return;
+    }
+    
+    // Find index of current question
+    const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
+    
+    // Get next question or wrap around to the first one
+    const nextIndex = (currentIndex + 1) % questions.length;
+    const nextQuestion = questions[nextIndex];
+    
+    set({
+      currentQuestion: nextQuestion,
+      selectedOption: null,
+      showExplanation: false
+    });
+  },
+  
+  setIsLoading: (isLoading) => set({ isLoading }),
+  
+  getUserStats: () => {
+    const { user } = get();
+    
+    if (!user) {
+      return {
+        totalQuestions: 0,
+        correctAnswers: 0,
+        accuracyPercentage: 0,
+        weakCategories: [],
+        strongCategories: [],
+        streakDays: 0
+      };
+    }
+    
+    return {
+      totalQuestions: user.questionsAnswered,
+      correctAnswers: user.questionsCorrect,
+      accuracyPercentage: user.questionsAnswered > 0 
+        ? (user.questionsCorrect / user.questionsAnswered) * 100 
+        : 0,
+      weakCategories: [], // To be implemented with category tracking
+      strongCategories: [], // To be implemented with category tracking
+      streakDays: user.currentStreak
+    };
+  },
+  
+  changeExamType: (examType) => {
+    const { user, allUsers } = get();
+    
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      examType
+    };
+    
+    // Update allUsers as well
+    const updatedAllUsers = allUsers.map(u => 
+      u.id === user.id ? updatedUser : u
+    );
+    
+    set({ 
+      user: updatedUser,
+      allUsers: updatedAllUsers
+    });
+  }
+}), {
+  name: 'ai-exam-prep-storage'
+}));
