@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { persist, PersistOptions } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { Question } from '@/types';
 
 interface QuestionStore {
@@ -10,14 +10,6 @@ interface QuestionStore {
   deleteQuestion: (id: string) => void;
   getQuestionById: (id: string) => Question | undefined;
 }
-
-type QuestionPersistConfig = {
-  name: string;
-};
-
-const persistConfig: PersistOptions<QuestionStore, QuestionStore> = {
-  name: 'custom-questions-storage',
-};
 
 export const useQuestionStore = create<QuestionStore>()(
   persist(
@@ -48,6 +40,8 @@ export const useQuestionStore = create<QuestionStore>()(
         return get().customQuestions.find((question) => question.id === id);
       }
     }),
-    persistConfig
+    {
+      name: 'custom-questions-storage',
+    }
   )
 );

@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { persist, PersistOptions } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { AppState, ExamType, Question, User, UserStats } from '@/types';
 
@@ -18,15 +18,6 @@ type AppStoreWithActions = AppState & {
   setIsLoading: (isLoading: boolean) => void;
   getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
-};
-
-type AppPersistConfig = {
-  name: string;
-  version?: number;
-};
-
-const persistConfig: PersistOptions<AppStoreWithActions, AppStoreWithActions> = {
-  name: 'ai-exam-prep-storage',
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -221,6 +212,8 @@ export const useAppStore = create<AppStoreWithActions>()(
         });
       }
     }),
-    persistConfig
+    {
+      name: 'ai-exam-prep-storage',
+    }
   )
 );

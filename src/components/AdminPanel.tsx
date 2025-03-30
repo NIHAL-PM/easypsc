@@ -44,9 +44,9 @@ const AdminPanel = () => {
   const handleLogin = () => {
     setIsLoading(true);
     
-    // Simple authentication - in a real app, you would use secure authentication
+    // Updated credentials to match requested values
     setTimeout(() => {
-      if (username === 'admin' && password === 'password') {
+      if (username === 'bluewaterbottle' && password === 'waterbottle') {
         setIsLoggedIn(true);
         toast({
           title: 'Login successful',
