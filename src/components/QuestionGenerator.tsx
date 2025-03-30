@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ApiKeyInput from './ApiKeyInput';
+import { isGeminiApiKeyConfigured } from '@/lib/env';
 
 const QuestionGenerator = () => {
   const { 
@@ -24,9 +26,26 @@ const QuestionGenerator = () => {
   const navigate = useNavigate();
   
   const [difficulty, setDifficulty] = useState('medium');
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
+    return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
+  });
+  
+  const handleApiKeySubmit = (apiKey: string) => {
+    setApiKeyConfigured(true);
+  };
   
   const handleGenerateQuestions = async () => {
     if (!user) return;
+    
+    // Check if API key is configured
+    if (!apiKeyConfigured) {
+      toast({
+        title: "API Key Required",
+        description: "Please configure your Gemini API key first.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Check if non-premium user has questions remaining
     if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
@@ -63,6 +82,16 @@ const QuestionGenerator = () => {
         askedQuestionIds // Pass the IDs of questions that have already been asked
       });
       
+      if (generatedQuestions.length === 0) {
+        toast({
+          title: 'No new questions available',
+          description: 'Try changing the difficulty or exam type to get new questions.',
+          variant: 'warning'
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       setQuestions(generatedQuestions);
       
       // Set the first question as current
@@ -84,13 +113,17 @@ const QuestionGenerator = () => {
       console.error('Error generating questions:', error);
       toast({
         title: 'Error generating questions',
-        description: 'Please try again later.',
+        description: 'Please ensure your API key is configured correctly.',
         variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
+  
+  if (!apiKeyConfigured) {
+    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
+  }
   
   return (
     <motion.div

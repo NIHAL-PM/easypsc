@@ -41,7 +41,16 @@ export const useAppStore = create<AppStoreWithActions>()(
         const existingUser = allUsers.find(user => user.email === email);
         
         if (existingUser) {
-          set({ user: existingUser });
+          // Update last active timestamp
+          const updatedUser = {
+            ...existingUser,
+            lastActive: new Date()
+          };
+          
+          set({ 
+            user: updatedUser,
+            allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u)
+          });
           return;
         }
         
@@ -92,10 +101,15 @@ export const useAppStore = create<AppStoreWithActions>()(
         allUsers: [...state.allUsers, user] 
       })),
       
-      setQuestions: (questions) => set({ 
-        questions,
-        askedQuestionIds: [...get().askedQuestionIds, ...questions.map(q => q.id)]
-      }),
+      setQuestions: (questions) => {
+        const newQuestionIds = questions.map(q => q.id);
+        
+        set(state => ({ 
+          questions,
+          // Add new question IDs to the list of asked questions
+          askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
+        }));
+      },
       
       setCurrentQuestion: (question) => set({ 
         currentQuestion: question,

@@ -1,17 +1,12 @@
-
 import { Question, ExamType, QuestionDifficulty } from '@/types';
 import { getGeminiApiKey, isGeminiApiKeyConfigured } from '@/lib/env';
+import { v4 as uuidv4 } from 'uuid';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
   difficulty: QuestionDifficulty;
   count: number;
   askedQuestionIds?: string[];
-}
-
-interface UserActivityTrackingOptions {
-  action: string;
-  details: Record<string, any>;
 }
 
 /**
@@ -28,16 +23,18 @@ export const generateQuestions = async ({
     
     if (!GEMINI_API_KEY) {
       console.error('Gemini API key not configured.');
-      // Return sample questions when API key is not available
-      return getSampleQuestions(examType, difficulty, count);
+      throw new Error('API key not configured');
     }
     
-    // Prepare the prompt for Gemini
+    // Prepare the prompt for Gemini with specific instruction not to repeat questions
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
     Generate questions in English.
     
-    Important: Generate completely new and unique questions that have not been used before.
+    Critical requirements:
+    1. Generate completely new and unique questions that have not been used before.
+    2. Each question must have a different topic/concept to ensure variety.
+    3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
     
     Format each question with:
     1. Question text
@@ -48,7 +45,7 @@ export const generateQuestions = async ({
     
     Return as a JSON array of question objects with the following structure:
     {
-      "id": "unique_id",
+      "id": "${uuidv4()}", // Use a unique ID for each question
       "text": "question text",
       "options": ["option A", "option B", "option C", "option D"],
       "correctOption": 0, // 0-indexed (0 for A, 1 for B, etc.)
@@ -56,6 +53,8 @@ export const generateQuestions = async ({
       "category": "subject/category",
       "difficulty": "${difficulty}"
     }`;
+    
+    console.log('Calling Gemini API with prompt:', prompt);
     
     // Call the Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -72,7 +71,13 @@ export const generateQuestions = async ({
               }
             ]
           }
-        ]
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 8192,
+        }
       })
     });
     
@@ -83,6 +88,7 @@ export const generateQuestions = async ({
     }
     
     const data = await response.json();
+    console.log('Gemini API response:', data);
     
     // Extract the content from the response
     const jsonContent = data.candidates[0].content.parts[0].text;
@@ -96,16 +102,23 @@ export const generateQuestions = async ({
     }
     
     const questionsJson = match[1]?.trim() || match[2]?.trim() || match[0]?.trim();
-    const questions = JSON.parse(questionsJson) as Question[];
+    let questions = JSON.parse(questionsJson) as Question[];
+    
+    // Ensure each question has a unique ID
+    questions = questions.map(q => ({
+      ...q,
+      id: q.id || uuidv4()
+    }));
     
     // Filter out questions that have already been asked
     const filteredQuestions = questions.filter(q => !askedQuestionIds.includes(q.id));
     
+    console.log(`Generated ${questions.length} questions, filtered to ${filteredQuestions.length} new questions`);
+    
     return filteredQuestions.slice(0, count);
   } catch (error) {
     console.error('Error generating questions:', error);
-    // Fallback to sample questions if API fails
-    return getSampleQuestions(examType, difficulty, count);
+    throw error;
   }
 };
 
@@ -142,7 +155,13 @@ export const generateChat = async (
               }
             ]
           }
-        ]
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 4096,
+        }
       })
     });
     
@@ -170,8 +189,7 @@ export const trackUserActivity = (
   action: string,
   details: Record<string, any> = {}
 ) => {
-  // In a real app, this would send data to a backend API
-  // For now, we'll just log it
+  // Log the activity
   console.log('User activity:', {
     userId,
     action,
@@ -179,141 +197,111 @@ export const trackUserActivity = (
     timestamp: new Date().toISOString()
   });
   
-  // Return a resolved promise to mimic an async call
-  return Promise.resolve(true);
+  // In a real app, we would send this data to a backend for storage
+  try {
+    // Store the activity in localStorage for persistence
+    const activitiesKey = `user_activities_${userId}`;
+    const existingActivities = JSON.parse(localStorage.getItem(activitiesKey) || '[]');
+    
+    existingActivities.push({
+      action,
+      details,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Keep only the last 1000 activities to prevent localStorage from getting too full
+    const limitedActivities = existingActivities.slice(-1000);
+    localStorage.setItem(activitiesKey, JSON.stringify(limitedActivities));
+    
+    return Promise.resolve(true);
+  } catch (error) {
+    console.error('Error storing user activity:', error);
+    return Promise.resolve(false);
+  }
 };
 
-/**
- * Returns sample questions for testing when API is not available
- */
-const getSampleQuestions = (
-  examType: ExamType, 
-  difficulty: QuestionDifficulty, 
-  count: number
-): Question[] => {
-  const sampleQuestions: Record<ExamType, Question[]> = {
-    'UPSC': [
-      {
-        id: 'upsc-sample-1',
-        text: 'Which of the following is NOT a Fundamental Right guaranteed by the Indian Constitution?',
-        options: [
-          'Right to Equality',
-          'Right to Property',
-          'Right to Freedom',
-          'Right to Constitutional Remedies'
-        ],
-        correctOption: 1,
-        explanation: 'Right to Property was originally a Fundamental Right but was removed from the list by the 44th Amendment in 1978. It is now a legal right under Article 300A.',
-        category: 'Indian Polity',
-        difficulty: difficulty
-      },
-      {
-        id: 'upsc-sample-2',
-        text: 'The concept of "Judicial Review" in India has been borrowed from which country\'s constitution?',
-        options: [
-          'United Kingdom',
-          'United States',
-          'Canada',
-          'Australia'
-        ],
-        correctOption: 1,
-        explanation: 'The concept of Judicial Review has been borrowed from the United States. It empowers the judiciary to review the constitutionality of legislative and executive actions.',
-        category: 'Indian Polity',
-        difficulty: difficulty
-      }
-    ],
-    'PSC': [
-      {
-        id: 'psc-sample-1',
-        text: 'Which among the following rivers does NOT flow through Kerala?',
-        options: [
-          'Periyar',
-          'Bharathapuzha',
-          'Cauvery',
-          'Pamba'
-        ],
-        correctOption: 2,
-        explanation: 'Cauvery flows mainly through Karnataka and Tamil Nadu, not through Kerala. The other rivers mentioned - Periyar, Bharathapuzha, and Pamba - are major rivers in Kerala.',
-        category: 'Kerala Geography',
-        difficulty: difficulty
-      },
-      {
-        id: 'psc-sample-2',
-        text: 'Who was the first Chief Minister of Kerala?',
-        options: [
-          'E.M.S. Namboodiripad',
-          'K. Karunakaran',
-          'A.K. Antony',
-          'C. Achutha Menon'
-        ],
-        correctOption: 0,
-        explanation: 'E.M.S. Namboodiripad was the first Chief Minister of Kerala. He assumed office on April 5, 1957, after the first Kerala Legislative Assembly election.',
-        category: 'Kerala History',
-        difficulty: difficulty
-      }
-    ],
-    'SSC': [
-      {
-        id: 'ssc-sample-1',
-        text: 'If a person walks at 4 km/hr, he reaches his office 8 minutes early. If he walks at a speed of 3 km/hr, he reaches 7 minutes late. What is the exact distance of his office?',
-        options: [
-          '2 km',
-          '3 km',
-          '4 km',
-          '5 km'
-        ],
-        correctOption: 0,
-        explanation: 'Let the distance be d km and the exact time be t hr. Then, d/4 + (8/60) = t and d/3 - (7/60) = t. Solving these equations, we get d = 2 km.',
-        category: 'Quantitative Aptitude',
-        difficulty: difficulty
-      },
-      {
-        id: 'ssc-sample-2',
-        text: 'Which of the following is the antonym of ZENITH?',
-        options: [
-          'Apex',
-          'Nadir',
-          'Pinnacle',
-          'Summit'
-        ],
-        correctOption: 1,
-        explanation: 'Nadir means the lowest point and is the antonym of Zenith, which means the highest point or culmination.',
-        category: 'English Language',
-        difficulty: difficulty
-      }
-    ],
-    'Banking': [
-      {
-        id: 'banking-sample-1',
-        text: 'In which of the following types of banking, banks provide locker facilities, ATM services, and accept deposits?',
-        options: [
-          'Retail Banking',
-          'Corporate Banking',
-          'Investment Banking',
-          'Universal Banking'
-        ],
-        correctOption: 0,
-        explanation: 'Retail Banking involves providing services to individual customers including locker facilities, ATM services, and accepting deposits.',
-        category: 'Banking Awareness',
-        difficulty: difficulty
-      },
-      {
-        id: 'banking-sample-2',
-        text: 'Which committee is associated with the reforms in the Insurance sector in India?',
-        options: [
-          'Abid Hussain Committee',
-          'Chakravarty Committee',
-          'Malhotra Committee',
-          'Narasimham Committee'
-        ],
-        correctOption: 2,
-        explanation: 'The Malhotra Committee, headed by R.N. Malhotra, former RBI Governor, was formed to propose recommendations for reforms in the Insurance sector in India.',
-        category: 'Financial Awareness',
-        difficulty: difficulty
-      }
-    ]
-  };
-  
-  // Return a subset of the sample questions
-  return sampleQuestions[examType].slice(0, count);
+// Helper function to get user statistics
+export const getUserActivityStats = (userId: string) => {
+  try {
+    const activitiesKey = `user_activities_${userId}`;
+    const activities = JSON.parse(localStorage.getItem(activitiesKey) || '[]');
+    
+    // Count various activities
+    const questionsAnswered = activities.filter(a => a.action === 'answer_submitted').length;
+    const questionsCorrect = activities.filter(a => a.action === 'answer_submitted' && a.details.isCorrect).length;
+    
+    // Get activities by exam type
+    const examTypeActivities = activities.filter(a => a.details.examType);
+    const examTypeCount = {};
+    examTypeActivities.forEach(a => {
+      const examType = a.details.examType;
+      examTypeCount[examType] = (examTypeCount[examType] || 0) + 1;
+    });
+    
+    return {
+      totalActivities: activities.length,
+      questionsAnswered,
+      questionsCorrect,
+      examTypeDistribution: examTypeCount
+    };
+  } catch (error) {
+    console.error('Error getting user activity stats:', error);
+    return {
+      totalActivities: 0,
+      questionsAnswered: 0,
+      questionsCorrect: 0,
+      examTypeDistribution: {}
+    };
+  }
+};
+
+// Get system-wide statistics
+export const getSystemStats = () => {
+  try {
+    // Get all keys in localStorage that start with 'user_activities_'
+    const activityKeys = Object.keys(localStorage).filter(key => key.startsWith('user_activities_'));
+    
+    // Calculate total questions answered across all users
+    let totalQuestionsAnswered = 0;
+    let totalQuestionsCorrect = 0;
+    
+    activityKeys.forEach(key => {
+      const activities = JSON.parse(localStorage.getItem(key) || '[]');
+      totalQuestionsAnswered += activities.filter(a => a.action === 'answer_submitted').length;
+      totalQuestionsCorrect += activities.filter(a => a.action === 'answer_submitted' && a.details.isCorrect).length;
+    });
+    
+    // Get all users from localStorage
+    const allUsers = JSON.parse(localStorage.getItem('ai-exam-prep-storage') || '{}')?.state?.allUsers || [];
+    
+    // Count users by exam type
+    const examTypeCount = {};
+    allUsers.forEach(user => {
+      const examType = user.examType;
+      examTypeCount[examType] = (examTypeCount[examType] || 0) + 1;
+    });
+    
+    return {
+      totalUsers: allUsers.length,
+      premiumUsers: allUsers.filter(u => u.isPremium).length,
+      activeToday: allUsers.filter(u => {
+        const lastActive = new Date(u.lastActive);
+        const today = new Date();
+        return lastActive.toDateString() === today.toDateString();
+      }).length,
+      totalQuestionsAnswered,
+      totalQuestionsCorrect,
+      examTypeDistribution: examTypeCount
+    };
+  } catch (error) {
+    console.error('Error getting system stats:', error);
+    return {
+      totalUsers: 0,
+      premiumUsers: 0,
+      activeToday: 0,
+      totalQuestionsAnswered: 0,
+      totalQuestionsCorrect: 0,
+      examTypeDistribution: {}
+    };
+  }
 };
