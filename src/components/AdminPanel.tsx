@@ -36,7 +36,7 @@ const AdminPanel = () => {
     activeToday: 0,
     totalQuestionsAnswered: 0,
     totalQuestionsCorrect: 0,
-    examTypeDistribution: {}
+    examTypeDistribution: {} as Record<string, number>
   });
   
   useEffect(() => {

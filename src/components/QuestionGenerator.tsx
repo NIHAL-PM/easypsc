@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,7 +85,7 @@ const QuestionGenerator = () => {
         toast({
           title: 'No new questions available',
           description: 'Try changing the difficulty or exam type to get new questions.',
-          variant: 'warning'
+          variant: "destructive"
         });
         setIsLoading(false);
         return;
