@@ -18,6 +18,7 @@ type AppStoreWithActions = AppState & {
   setIsLoading: (isLoading: boolean) => void;
   getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
+  setLastQuestionTime: (time: number) => void;
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -65,7 +66,8 @@ export const useAppStore = create<AppStoreWithActions>()(
           questionsAnswered: 0,
           questionsCorrect: 0,
           currentStreak: 0,
-          lastActive: new Date()
+          lastActive: new Date(),
+          lastQuestionTime: null
         };
         
         set(state => ({ 
@@ -213,6 +215,27 @@ export const useAppStore = create<AppStoreWithActions>()(
         const updatedUser = {
           ...user,
           examType
+        };
+        
+        // Update allUsers as well
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === user.id ? updatedUser : u
+        );
+        
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers
+        });
+      },
+      
+      setLastQuestionTime: (time) => {
+        const { user, allUsers } = get();
+        
+        if (!user) return;
+        
+        const updatedUser = {
+          ...user,
+          lastQuestionTime: time
         };
         
         // Update allUsers as well

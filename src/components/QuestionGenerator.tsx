@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
 import { isGeminiApiKeyConfigured } from '@/lib/env';
+import { useQuestionStore } from '@/services/questionStore';
 
 const QuestionGenerator = () => {
   const { 
@@ -19,10 +21,12 @@ const QuestionGenerator = () => {
     setCurrentQuestion, 
     setIsLoading, 
     isLoading, 
-    askedQuestionIds 
+    askedQuestionIds,
+    setLastQuestionTime
   } = useAppStore();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { customQuestions } = useQuestionStore();
   
   const [difficulty, setDifficulty] = useState('medium');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
@@ -31,6 +35,20 @@ const QuestionGenerator = () => {
   
   const handleApiKeySubmit = (apiKey: string) => {
     setApiKeyConfigured(true);
+  };
+  
+  // Function to check if enough time has passed since last question generation
+  const canGenerateNewQuestions = () => {
+    if (!user) return true;
+    
+    const lastQuestionTime = user.lastQuestionTime;
+    if (!lastQuestionTime) return true;
+    
+    const now = new Date().getTime();
+    const timeSinceLastQuestion = now - lastQuestionTime;
+    const minWaitTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+    
+    return timeSinceLastQuestion > minWaitTime;
   };
   
   const handleGenerateQuestions = async () => {
@@ -59,6 +77,19 @@ const QuestionGenerator = () => {
       if (shouldUpgrade) {
         navigate("/premium");
       }
+      return;
+    }
+    
+    // Check if we need to enforce a cooldown period
+    if (askedQuestionIds.length >= 10 && !canGenerateNewQuestions()) {
+      const lastTime = new Date(user.lastQuestionTime || 0);
+      const waitTimeMinutes = Math.ceil((10 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
+      
+      toast({
+        title: "Cooldown period",
+        description: `Please wait approximately ${waitTimeMinutes} more minutes before generating new questions.`,
+        variant: "destructive"
+      });
       return;
     }
     
@@ -91,11 +122,22 @@ const QuestionGenerator = () => {
         return;
       }
       
+      // Store the new questions in the question store for admin access
+      generatedQuestions.forEach(question => {
+        // Only add if it doesn't already exist in customQuestions
+        if (!customQuestions.some(q => q.id === question.id)) {
+          useQuestionStore.getState().addQuestion(question);
+        }
+      });
+      
       setQuestions(generatedQuestions);
       
       // Set the first question as current
       if (generatedQuestions.length > 0) {
         setCurrentQuestion(generatedQuestions[0]);
+        
+        // Update the last question time
+        setLastQuestionTime(new Date().getTime());
         
         toast({
           title: 'Questions generated',
