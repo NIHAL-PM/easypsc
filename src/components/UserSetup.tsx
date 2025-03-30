@@ -42,6 +42,8 @@ const UserSetup = () => {
       questionsCorrect: 0,
       isPremium: false,
       monthlyQuestionsRemaining: 10, // Free tier gets 10 questions
+      currentStreak: 0, // Add missing property
+      lastActive: null // Add missing property
     };
     
     setUser(newUser);

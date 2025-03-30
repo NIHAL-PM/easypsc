@@ -1,5 +1,6 @@
 
 import { Question, ExamType, QuestionDifficulty } from '@/types';
+import { getGeminiApiKey, isGeminiApiKeyConfigured } from '@/lib/env';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -23,7 +24,7 @@ export const generateQuestions = async ({
   askedQuestionIds = []
 }: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
-    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const GEMINI_API_KEY = localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey();
     
     if (!GEMINI_API_KEY) {
       console.error('Gemini API key not configured.');
@@ -105,6 +106,59 @@ export const generateQuestions = async ({
     console.error('Error generating questions:', error);
     // Fallback to sample questions if API fails
     return getSampleQuestions(examType, difficulty, count);
+  }
+};
+
+/**
+ * Generates chat responses using the Gemini API
+ */
+export const generateChat = async (
+  userMessage: string,
+  apiKey?: string
+): Promise<string | null> => {
+  try {
+    const GEMINI_API_KEY = apiKey || localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey();
+    
+    if (!GEMINI_API_KEY) {
+      console.error('Gemini API key not configured for chat.');
+      return null;
+    }
+    
+    // Call the Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `You are an expert exam preparation assistant for competitive exams like UPSC, PSC, SSC, and Banking exams. 
+                Provide helpful, accurate, and concise answers to the user's questions. Focus on being educational and helpful.
+                
+                User message: ${userMessage}`
+              }
+            ]
+          }
+        ]
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Gemini API error in chat:', errorData);
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Extract the content from the response
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Error generating chat response:', error);
+    return null;
   }
 };
 

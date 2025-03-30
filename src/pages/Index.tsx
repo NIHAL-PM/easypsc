@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionGenerator from '@/components/QuestionGenerator';
 import AnimatedLogo from '@/components/AnimatedLogo';
 import ProfileCard from '@/components/ProfileCard';
-import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle } from 'lucide-react';
+import ChatMode from '@/components/ChatMode';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen } from 'lucide-react';
 import { ExamType } from '@/types';
 
 const Index = () => {
@@ -22,6 +24,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
+  const [activeTab, setActiveTab] = useState<'questions' | 'chat'>('questions');
   
   // Validation for form
   const [isNameValid, setIsNameValid] = useState(true);
@@ -215,11 +218,30 @@ const Index = () => {
             </div>
             
             <div className="md:col-span-2 space-y-6">
-              {!currentQuestion ? (
-                <QuestionGenerator />
-              ) : (
-                <QuestionCard />
-              )}
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat')} className="w-full">
+                <TabsList className="grid grid-cols-2 mb-4">
+                  <TabsTrigger value="questions" className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Practice Questions
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Chat with AI
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="questions" className="space-y-4">
+                  {!currentQuestion ? (
+                    <QuestionGenerator />
+                  ) : (
+                    <QuestionCard />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="chat">
+                  <ChatMode />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
