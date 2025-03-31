@@ -1,7 +1,7 @@
 
 import React from 'react';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuestionDifficulty } from '@/types';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export interface DifficultySelectorProps {
   selected: QuestionDifficulty;
@@ -10,25 +10,19 @@ export interface DifficultySelectorProps {
 
 const DifficultySelector: React.FC<DifficultySelectorProps> = ({ selected, onSelect }) => {
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium">Question Difficulty</div>
-      <ToggleGroup 
-        type="single" 
-        value={selected} 
-        onValueChange={(value) => value && onSelect(value as QuestionDifficulty)}
-        className="justify-start"
-      >
-        <ToggleGroupItem value="easy" className="text-sm" aria-label="Easy difficulty">
+    <Tabs value={selected} onValueChange={(value) => onSelect(value as QuestionDifficulty)}>
+      <TabsList className="grid grid-cols-3">
+        <TabsTrigger value="easy" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-800 dark:data-[state=active]:bg-green-900/20 dark:data-[state=active]:text-green-400">
           Easy
-        </ToggleGroupItem>
-        <ToggleGroupItem value="medium" className="text-sm" aria-label="Medium difficulty">
+        </TabsTrigger>
+        <TabsTrigger value="medium" className="data-[state=active]:bg-amber-100 data-[state=active]:text-amber-800 dark:data-[state=active]:bg-amber-900/20 dark:data-[state=active]:text-amber-400">
           Medium
-        </ToggleGroupItem>
-        <ToggleGroupItem value="hard" className="text-sm" aria-label="Hard difficulty">
+        </TabsTrigger>
+        <TabsTrigger value="hard" className="data-[state=active]:bg-rose-100 data-[state=active]:text-rose-800 dark:data-[state=active]:bg-rose-900/20 dark:data-[state=active]:text-rose-400">
           Hard
-        </ToggleGroupItem>
-      </ToggleGroup>
-    </div>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 };
 

@@ -1,28 +1,36 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
 import { Download } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 const PWAInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later
-      setDeferredPrompt(e);
-      // Update UI to show the install button
-      setShowInstallButton(true);
+      // Store the event so it can be triggered later
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      // Show the install button
+      setIsVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setShowInstallButton(false);
+    // Check if already installed
+    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                       (window.navigator as any).standalone === true;
+    
+    if (isInstalled) {
+      setIsVisible(false);
     }
 
     return () => {
@@ -31,49 +39,43 @@ const PWAInstallPrompt = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      toast({
-        title: "Installation",
-        description: "The app cannot be installed at this time. Try again later.",
-      });
-      return;
-    }
+    if (!deferredPrompt) return;
 
     // Show the install prompt
     deferredPrompt.prompt();
-    
+
     // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+    const choiceResult = await deferredPrompt.userChoice;
     
-    // We've used the prompt, and can't use it again, throw it away
-    setDeferredPrompt(null);
-    
-    if (outcome === 'accepted') {
+    if (choiceResult.outcome === 'accepted') {
       toast({
-        title: "Success!",
-        description: "AnswerScape has been installed on your device.",
+        title: "Thanks for installing!",
+        description: "Now you can use our app even when you're offline.",
       });
-      setShowInstallButton(false);
     } else {
       toast({
-        title: "Installation declined",
-        description: "You can install the app later from the menu if you change your mind.",
+        title: "Install Later",
+        description: "You can install our app anytime from the menu.",
+        variant: "default",
       });
     }
+
+    // Clear the deferredPrompt variable
+    setDeferredPrompt(null);
+    // Hide the button
+    setIsVisible(false);
   };
 
-  if (!showInstallButton) {
-    return null;
-  }
+  if (!isVisible) return null;
 
   return (
-    <Button 
-      className="gap-1" 
-      variant="outline" 
+    <Button
       size="sm"
+      variant="default"
+      className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all text-white shadow-md"
       onClick={handleInstallClick}
     >
-      <Download className="h-4 w-4" />
+      <Download className="w-4 h-4 mr-2" />
       Install App
     </Button>
   );

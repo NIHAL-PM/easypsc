@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'offline.html'],
       manifest: {
         name: 'Easy PSC AnswerScape',
         short_name: 'AnswerScape',
@@ -33,6 +33,22 @@ export default defineConfig(({ mode }) => ({
             src: '/icons/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: new RegExp('^https://generativelanguage\\.googleapis\\.com/.*'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              }
+            }
           }
         ]
       }
