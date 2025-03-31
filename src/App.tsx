@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PremiumUpgrade from "./components/PremiumUpgrade";
 import AdminPanel from "./components/AdminPanel";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
@@ -68,6 +69,10 @@ const App = () => {
         <div className="absolute top-0 right-0 w-[30vw] h-[30vw] max-w-[500px] max-h-[500px] bg-gradient-primary opacity-[0.03] rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] max-w-[600px] max-h-[600px] bg-gradient-secondary opacity-[0.03] rounded-full blur-3xl"></div>
         <div className="absolute top-1/3 left-1/4 w-[25vw] h-[25vw] max-w-[400px] max-h-[400px] bg-gradient-accent animate-float opacity-[0.03] rounded-full blur-3xl"></div>
+      </div>
+      
+      <div className="fixed top-2 right-2 z-50">
+        <PWAInstallPrompt />
       </div>
       
       <Toaster />

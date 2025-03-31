@@ -9,7 +9,7 @@ import { QuestionDifficulty } from '@/types';
 interface DifficultySelectorProps {
   maxQuestions: number;
   onChange: (settings: { easy: number; medium: number; hard: number }) => void;
-  // Add these props to match what's being passed in QuestionGenerator
+  // Make the selected difficulty and select handler optional
   selected?: QuestionDifficulty;
   onSelect?: (difficulty: QuestionDifficulty) => void;
 }

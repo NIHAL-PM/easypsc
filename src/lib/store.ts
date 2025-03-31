@@ -307,7 +307,18 @@ export const useAppStore = create<AppStoreWithActions>()(
               'SSC': { correct: 0, total: 0, accuracy: 0 },
               'Banking': { correct: 0, total: 0, accuracy: 0 }
             },
-            subjectPerformance: {}
+            subjectPerformance: {
+              'Polity': { correct: 0, total: 0, avgTime: 0 },
+              'Economics': { correct: 0, total: 0, avgTime: 0 },
+              'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
+              'History': { correct: 0, total: 0, avgTime: 0 },
+              'Geography': { correct: 0, total: 0, avgTime: 0 },
+              'Science': { correct: 0, total: 0, avgTime: 0 },
+              'Environment': { correct: 0, total: 0, avgTime: 0 },
+              'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
+              'English Language': { correct: 0, total: 0, avgTime: 0 },
+              'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
+            }
           };
         }
         
