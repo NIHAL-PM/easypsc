@@ -8,13 +8,15 @@ type LoadingSpinnerProps = {
   color?: string;
   text?: string;
   useAnimatedText?: boolean;
+  className?: string; // Add className prop
 };
 
 const LoadingSpinner = ({ 
   size = 'md', 
   color = 'primary',
   text = 'Loading...',
-  useAnimatedText = false
+  useAnimatedText = false,
+  className = '' // Default to empty string
 }: LoadingSpinnerProps) => {
   const sizeMap = {
     sm: 'w-6 h-6',
@@ -29,7 +31,7 @@ const LoadingSpinner = ({
   };
   
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className={`flex flex-col items-center justify-center ${className}`}>
       <motion.div
         className={`${sizeMap[size]} rounded-full border-4 ${colorMap[color as keyof typeof colorMap]} shadow-[0_0_15px_rgba(0,0,0,0.1)]`}
         animate={{ 

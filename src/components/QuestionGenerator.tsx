@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,16 +44,13 @@ const QuestionGenerator = ({
     setSelectedSubject: setGlobalSelectedSubject,
   } = useAppStore(state => state);
 
-  // Use cooldown to prevent spamming
   const handleGenerateQuestions = async () => {
     if (isLoading || !user) return;
     
-    // Check if the user can generate new questions
     if (user.lastQuestionTime) {
       const now = Date.now();
       const timeSinceLastQuestion = now - user.lastQuestionTime;
       
-      // If less than 10 minutes (600,000 ms) have passed
       if (timeSinceLastQuestion < 600000) {
         const remainingCooldown = Math.ceil((600000 - timeSinceLastQuestion) / 1000);
         
@@ -67,7 +63,6 @@ const QuestionGenerator = ({
           variant: "destructive"
         });
         
-        // Start countdown
         const interval = setInterval(() => {
           setCooldownSeconds(prev => {
             const newValue = prev - 1;
@@ -84,7 +79,6 @@ const QuestionGenerator = ({
       }
     }
     
-    // Check if the user has questions remaining
     if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
       toast({
         title: "Question limit reached",
@@ -100,14 +94,11 @@ const QuestionGenerator = ({
     try {
       let generatedQuestions;
       
-      // Store subject selection in global state
       setGlobalSelectedSubject(selectedSubject);
       
       if (mixedMode) {
-        // Update global mixed difficulty settings
         setMixedDifficultySettings(mixedSettings);
         
-        // Generate questions with mixed difficulty
         const easyQuestions = await generateQuestions({
           examType: user.examType,
           difficulty: 'easy',
@@ -134,7 +125,6 @@ const QuestionGenerator = ({
         
         generatedQuestions = [...easyQuestions, ...mediumQuestions, ...hardQuestions];
       } else {
-        // Generate questions with single difficulty
         generatedQuestions = await generateQuestions({
           examType: user.examType, 
           difficulty: selectedDifficulty,
@@ -153,12 +143,10 @@ const QuestionGenerator = ({
         return;
       }
       
-      // Update the lastQuestionTime
       useAppStore.getState().setLastQuestionTime(Date.now());
       
       setQuestions(generatedQuestions);
       
-      // Set the first question
       if (generatedQuestions.length > 0) {
         setCurrentQuestion(generatedQuestions[0]);
       }
@@ -181,7 +169,6 @@ const QuestionGenerator = ({
     }
   };
   
-  // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -194,7 +181,6 @@ const QuestionGenerator = ({
         <CardTitle className="text-xl font-bold">Generate Questions</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pb-2">
-        {/* Toggle between Mixed and Single Difficulty */}
         <div>
           <div className="flex items-center space-x-2 mb-2">
             <Button 
@@ -216,12 +202,15 @@ const QuestionGenerator = ({
           </div>
         </div>
         
-        {/* Question Difficulty Selection */}
         {!mixedMode ? (
           <>
             <DifficultySelector 
-              selected={selectedDifficulty} 
-              onSelect={setSelectedDifficulty} 
+              maxQuestions={20}
+              onChange={(settings) => {
+                console.log("Mixed settings changed:", settings);
+              }}
+              selected={selectedDifficulty}
+              onSelect={setSelectedDifficulty}
             />
             
             <div className="space-y-2">
@@ -246,7 +235,6 @@ const QuestionGenerator = ({
             </div>
           </>
         ) : (
-          // Mixed difficulty settings
           <div className="space-y-3">
             <div className="space-y-1">
               <div className="flex justify-between items-center">
@@ -293,7 +281,6 @@ const QuestionGenerator = ({
           </div>
         )}
         
-        {/* Subject Selection */}
         <div className="space-y-2">
           <Label htmlFor="subject">Select Subject (Optional)</Label>
           <Select
@@ -325,7 +312,6 @@ const QuestionGenerator = ({
           </Select>
         </div>
         
-        {/* Timer Toggle */}
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2">
             <Timer className="h-4 w-4 text-muted-foreground" />
@@ -356,7 +342,7 @@ const QuestionGenerator = ({
         >
           {isLoading ? (
             <>
-              <LoadingSpinner className="mr-2" /> Generating...
+              <LoadingSpinner size="sm" text="" mr-2 /> Generating...
             </>
           ) : canGenerate ? (
             "Generate Questions"
