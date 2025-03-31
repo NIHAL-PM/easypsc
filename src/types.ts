@@ -37,8 +37,8 @@ export interface Question {
   explanation: string;
   category: string;
   difficulty: QuestionDifficulty;
-  subject: Subject;
-  timeLimit: number; // in seconds
+  subject?: Subject;
+  timeLimit?: number; // in seconds
 }
 
 export interface CurrentAffairsItem {
