@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Check, X, ArrowRight, Lightbulb, Award, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Check, X, ArrowRight, Lightbulb, Award, AlertTriangle, CheckCircle2, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,9 @@ import { Question } from '@/types';
 import { useAppStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackUserActivity } from '@/services/api';
+import QuestionTimer from './QuestionTimer';
+import HeartCounter from './HeartCounter';
+import { toast } from '@/components/ui/use-toast';
 
 interface QuestionCardProps {
   question?: Question;
@@ -21,7 +24,12 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
     nextQuestion, 
     showExplanation,
     user,
-    currentQuestion: storeQuestion
+    currentQuestion: storeQuestion,
+    questionsWithTimer,
+    currentQuestionStartTime,
+    timeRemaining,
+    setQuestionStartTime,
+    addHeart
   } = useAppStore();
   
   // Use the question from props if provided, otherwise use from store
@@ -29,6 +37,8 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
   
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const [timeSpent, setTimeSpent] = useState(0);
   
   // Guard against attempting to render when no question is available
   if (!question) {
@@ -43,22 +53,48 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
     // Reset state when question changes
     setIsSubmitted(false);
     setIsCorrect(null);
-  }, [question.id]);
+    setShowHeartAnimation(false);
+    
+    // Start timer for the new question
+    if (questionsWithTimer) {
+      setQuestionStartTime(Date.now());
+    }
+  }, [question.id, questionsWithTimer, setQuestionStartTime]);
   
   const handleSubmit = () => {
     if (selectedOption === null) return;
     
+    // Calculate time spent on this question
+    const now = Date.now();
+    const timeElapsed = currentQuestionStartTime ? Math.floor((now - currentQuestionStartTime) / 1000) : 0;
+    setTimeSpent(timeElapsed);
+    
     const correct = selectedOption === question.correctOption;
     setIsCorrect(correct);
     setIsSubmitted(true);
-    submitAnswer();
+    
+    // Add heart if answer is correct
+    if (correct) {
+      addHeart();
+      setShowHeartAnimation(true);
+      
+      // Show a celebratory toast
+      toast({
+        title: "Correct Answer!",
+        description: "You earned a heart for this correct answer.",
+        variant: "default",
+      });
+    }
+    
+    submitAnswer(timeElapsed);
     
     // Track user activity
     if (user) {
       trackUserActivity(user.id, 'answer_submitted', {
         questionId: question.id,
         selectedOption,
-        isCorrect: correct
+        isCorrect: correct,
+        timeSpent: timeElapsed
       });
     }
   };
@@ -70,6 +106,26 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
       trackUserActivity(user.id, 'next_question', {
         currentQuestionId: question.id
       });
+    }
+  };
+  
+  const handleTimeUp = () => {
+    if (!isSubmitted) {
+      toast({
+        title: "Time's up!",
+        description: "You ran out of time for this question.",
+        variant: "destructive",
+      });
+      
+      // If user hasn't submitted, auto-submit with current selection
+      if (selectedOption !== null) {
+        handleSubmit();
+      } else {
+        // If no option selected, mark as incorrect
+        setIsCorrect(false);
+        setIsSubmitted(true);
+        submitAnswer(question.timeLimit);
+      }
     }
   };
   
@@ -97,36 +153,53 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="w-full max-w-3xl mx-auto"
+      className="w-full mx-auto"
     >
+      <div className="flex justify-between items-center mb-3">
+        {user && (
+          <div className="relative">
+            <HeartCounter count={user.hearts} animate={showHeartAnimation} />
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2">
+          <Badge className="capitalize bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-0">
+            {question.subject}
+          </Badge>
+          <Badge variant={
+            question.difficulty === 'easy' ? 'outline' : 
+            question.difficulty === 'medium' ? 'secondary' : 
+            'destructive'
+          } className={`font-normal text-xs capitalize border-0 ${
+            question.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
+            question.difficulty === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' :
+            'bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'
+          }`}>
+            {question.difficulty === 'easy' && (
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+            )}
+            {question.difficulty === 'medium' && (
+              <Award className="w-3 h-3 mr-1" />
+            )}
+            {question.difficulty === 'hard' && (
+              <AlertTriangle className="w-3 h-3 mr-1" />
+            )}
+            {question.difficulty}
+          </Badge>
+        </div>
+      </div>
+      
+      {questionsWithTimer && !isSubmitted && (
+        <QuestionTimer 
+          timeLimit={question.timeLimit} 
+          onTimeUp={handleTimeUp}
+          isPaused={isSubmitted}
+        />
+      )}
+      
       <Card className="overflow-hidden border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm relative">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
         <CardHeader className="pb-3">
-          <div className="flex justify-between items-center mb-2">
-            <Badge className="font-normal text-xs capitalize bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-0">
-              {question.category}
-            </Badge>
-            <Badge variant={
-              question.difficulty === 'easy' ? 'outline' : 
-              question.difficulty === 'medium' ? 'secondary' : 
-              'destructive'
-            } className={`font-normal text-xs capitalize border-0 ${
-              question.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
-              question.difficulty === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' :
-              'bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'
-            }`}>
-              {question.difficulty === 'easy' && (
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-              )}
-              {question.difficulty === 'medium' && (
-                <Award className="w-3 h-3 mr-1" />
-              )}
-              {question.difficulty === 'hard' && (
-                <AlertTriangle className="w-3 h-3 mr-1" />
-              )}
-              {question.difficulty}
-            </Badge>
-          </div>
           <CardTitle className="text-xl md:text-2xl text-left leading-tight tracking-tight text-slate-900 dark:text-slate-100">
             {question.text}
           </CardTitle>
@@ -157,6 +230,13 @@ const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
               </motion.div>
             ))}
           </div>
+          
+          {isSubmitted && (
+            <div className="mt-4 text-sm text-indigo-600 dark:text-indigo-400">
+              <span className="font-medium">Time spent: </span>
+              {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
+            </div>
+          )}
           
           <AnimatePresence>
             {showExplanation && (

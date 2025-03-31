@@ -8,11 +8,15 @@ import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
+import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame, BookOpen, ToggleLeft, ToggleRight, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
 import { isGeminiApiKeyConfigured } from '@/lib/env';
 import { useQuestionStore } from '@/services/questionStore';
+import { Subject, QuestionDifficulty } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import DifficultySelector from './DifficultySelector';
 
 const QuestionGenerator = () => {
   const { 
@@ -22,16 +26,24 @@ const QuestionGenerator = () => {
     setIsLoading, 
     isLoading, 
     askedQuestionIds,
-    setLastQuestionTime
+    setLastQuestionTime,
+    questionsWithTimer,
+    toggleQuestionsWithTimer,
+    mixedDifficultySettings,
+    setMixedDifficultySettings,
+    selectedSubject,
+    setSelectedSubject
   } = useAppStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { customQuestions } = useQuestionStore();
   
-  const [difficulty, setDifficulty] = useState('medium');
+  const [difficulty, setDifficulty] = useState<QuestionDifficulty>('medium');
+  const [useMixedDifficulty, setUseMixedDifficulty] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
     return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
   });
+  const [maxQuestions, setMaxQuestions] = useState(10);
   
   const handleApiKeySubmit = (apiKey: string) => {
     setApiKeyConfigured(true);
@@ -99,23 +111,87 @@ const QuestionGenerator = () => {
       // Track user action
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
-        difficulty
+        difficulty: useMixedDifficulty ? 'mixed' : difficulty,
+        subject: selectedSubject
       });
       
-      // Generate 5 questions for premium, or limited questions for free users
-      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
+      // Calculate number of questions to generate
+      let count = 5; // Default count
       
-      const generatedQuestions = await generateQuestions({
-        examType: user.examType,
-        difficulty: difficulty as any,
-        count,
-        askedQuestionIds // Pass the IDs of questions that have already been asked
-      });
+      if (user.isPremium) {
+        count = useMixedDifficulty 
+          ? mixedDifficultySettings.easy + mixedDifficultySettings.medium + mixedDifficultySettings.hard
+          : 5;
+      } else {
+        // For free users, limit to remaining questions
+        count = Math.min(user.monthlyQuestionsRemaining, 5);
+        
+        if (useMixedDifficulty) {
+          // Ensure we don't request more than the user has available
+          const totalMixed = mixedDifficultySettings.easy + mixedDifficultySettings.medium + mixedDifficultySettings.hard;
+          count = Math.min(user.monthlyQuestionsRemaining, totalMixed);
+        }
+      }
+      
+      // Generate questions based on settings
+      let generatedQuestions = [];
+      
+      if (useMixedDifficulty) {
+        // Generate questions for each difficulty
+        const easyCount = Math.min(mixedDifficultySettings.easy, count);
+        const mediumCount = Math.min(mixedDifficultySettings.medium, count - easyCount);
+        const hardCount = Math.min(mixedDifficultySettings.hard, count - easyCount - mediumCount);
+        
+        // Generate easy questions
+        if (easyCount > 0) {
+          const easyQuestions = await generateQuestions({
+            examType: user.examType,
+            difficulty: 'easy',
+            count: easyCount,
+            askedQuestionIds,
+            subject: selectedSubject || undefined
+          });
+          generatedQuestions = [...generatedQuestions, ...easyQuestions];
+        }
+        
+        // Generate medium questions
+        if (mediumCount > 0) {
+          const mediumQuestions = await generateQuestions({
+            examType: user.examType,
+            difficulty: 'medium',
+            count: mediumCount,
+            askedQuestionIds: [...askedQuestionIds, ...generatedQuestions.map(q => q.id)],
+            subject: selectedSubject || undefined
+          });
+          generatedQuestions = [...generatedQuestions, ...mediumQuestions];
+        }
+        
+        // Generate hard questions
+        if (hardCount > 0) {
+          const hardQuestions = await generateQuestions({
+            examType: user.examType,
+            difficulty: 'hard',
+            count: hardCount,
+            askedQuestionIds: [...askedQuestionIds, ...generatedQuestions.map(q => q.id)],
+            subject: selectedSubject || undefined
+          });
+          generatedQuestions = [...generatedQuestions, ...hardQuestions];
+        }
+      } else {
+        // Standard single difficulty generation
+        generatedQuestions = await generateQuestions({
+          examType: user.examType,
+          difficulty: difficulty as any,
+          count,
+          askedQuestionIds,
+          subject: selectedSubject || undefined
+        });
+      }
       
       if (generatedQuestions.length === 0) {
         toast({
           title: 'No new questions available',
-          description: 'Try changing the difficulty or exam type to get new questions.',
+          description: 'Try changing the difficulty, subject, or exam type to get new questions.',
           variant: "destructive"
         });
         setIsLoading(false);
@@ -185,62 +261,137 @@ const QuestionGenerator = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Subject Selector */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
-                <Flame className="w-4 h-4 text-indigo-500" />
-                <span>Difficulty Level</span>
+              <Label htmlFor="subject" className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                <BookOpen className="w-4 h-4 text-indigo-500" />
+                Subject
               </Label>
-              <RadioGroup 
-                defaultValue={difficulty} 
-                onValueChange={setDifficulty}
-                className="grid grid-cols-3 gap-3"
+              <Select 
+                value={selectedSubject || ''} 
+                onValueChange={(value) => setSelectedSubject(value as Subject || null)}
               >
-                <div className="relative">
-                  <RadioGroupItem 
-                    value="easy" 
-                    id="easy" 
-                    className="peer sr-only" 
-                  />
-                  <Label 
-                    htmlFor="easy" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <ShieldCheck className="mb-1 h-5 w-5 text-emerald-500" />
-                    <span className="text-sm font-medium">Easy</span>
-                  </Label>
-                </div>
-                
-                <div className="relative">
-                  <RadioGroupItem 
-                    value="medium" 
-                    id="medium" 
-                    className="peer sr-only" 
-                  />
-                  <Label 
-                    htmlFor="medium" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <Flame className="mb-1 h-5 w-5 text-amber-500" />
-                    <span className="text-sm font-medium">Medium</span>
-                  </Label>
-                </div>
-                
-                <div className="relative">
-                  <RadioGroupItem 
-                    value="hard" 
-                    id="hard" 
-                    className="peer sr-only" 
-                  />
-                  <Label 
-                    htmlFor="hard" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <ShieldAlert className="mb-1 h-5 w-5 text-rose-500" />
-                    <span className="text-sm font-medium">Hard</span>
-                  </Label>
-                </div>
-              </RadioGroup>
+                <SelectTrigger id="subject" className="bg-white/80 dark:bg-slate-800/80">
+                  <SelectValue placeholder="All Subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="Polity">Polity</SelectItem>
+                  <SelectItem value="Economics">Economics</SelectItem>
+                  <SelectItem value="Art & Culture">Art & Culture</SelectItem>
+                  <SelectItem value="History">History</SelectItem>
+                  <SelectItem value="Geography">Geography</SelectItem>
+                  <SelectItem value="Science">Science</SelectItem>
+                  <SelectItem value="Environment">Environment</SelectItem>
+                  <SelectItem value="Current Affairs">Current Affairs</SelectItem>
+                  <SelectItem value="English Language">English Language</SelectItem>
+                  <SelectItem value="General Knowledge">General Knowledge</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            
+            {/* Timer Switch */}
+            <div className="flex items-center justify-between border p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="timer-switch" className="flex items-center gap-2 cursor-pointer">
+                  {questionsWithTimer ? (
+                    <ToggleRight className="w-5 h-5 text-indigo-500" />
+                  ) : (
+                    <ToggleLeft className="w-5 h-5 text-slate-400" />
+                  )}
+                  <span>Enable question timer</span>
+                </Label>
+              </div>
+              <Switch 
+                id="timer-switch" 
+                checked={questionsWithTimer} 
+                onCheckedChange={toggleQuestionsWithTimer}
+              />
+            </div>
+            
+            {/* Mixed Difficulty Switch */}
+            <div className="flex items-center justify-between border p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="mixed-difficulty-switch" className="flex items-center gap-2 cursor-pointer">
+                  {useMixedDifficulty ? (
+                    <ToggleRight className="w-5 h-5 text-indigo-500" />
+                  ) : (
+                    <ToggleLeft className="w-5 h-5 text-slate-400" />
+                  )}
+                  <span>Use mixed difficulty levels</span>
+                </Label>
+              </div>
+              <Switch 
+                id="mixed-difficulty-switch" 
+                checked={useMixedDifficulty} 
+                onCheckedChange={setUseMixedDifficulty}
+              />
+            </div>
+            
+            {/* Difficulty Selection */}
+            {useMixedDifficulty ? (
+              <DifficultySelector 
+                maxQuestions={maxQuestions} 
+                onChange={setMixedDifficultySettings} 
+              />
+            ) : (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                  <Flame className="w-4 h-4 text-indigo-500" />
+                  <span>Difficulty Level</span>
+                </Label>
+                <RadioGroup 
+                  defaultValue={difficulty} 
+                  onValueChange={(value) => setDifficulty(value as QuestionDifficulty)}
+                  className="grid grid-cols-3 gap-3"
+                >
+                  <div className="relative">
+                    <RadioGroupItem 
+                      value="easy" 
+                      id="easy" 
+                      className="peer sr-only" 
+                    />
+                    <Label 
+                      htmlFor="easy" 
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <ShieldCheck className="mb-1 h-5 w-5 text-emerald-500" />
+                      <span className="text-sm font-medium">Easy</span>
+                    </Label>
+                  </div>
+                  
+                  <div className="relative">
+                    <RadioGroupItem 
+                      value="medium" 
+                      id="medium" 
+                      className="peer sr-only" 
+                    />
+                    <Label 
+                      htmlFor="medium" 
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <Flame className="mb-1 h-5 w-5 text-amber-500" />
+                      <span className="text-sm font-medium">Medium</span>
+                    </Label>
+                  </div>
+                  
+                  <div className="relative">
+                    <RadioGroupItem 
+                      value="hard" 
+                      id="hard" 
+                      className="peer sr-only" 
+                    />
+                    <Label 
+                      htmlFor="hard" 
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <ShieldAlert className="mb-1 h-5 w-5 text-rose-500" />
+                      <span className="text-sm font-medium">Hard</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
