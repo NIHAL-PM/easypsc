@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -301,8 +300,13 @@ export const useAppStore = create<AppStoreWithActions>()(
             strongCategories: [],
             streakDays: 0,
             hearts: 0,
-            proficiencyLevel: 'beginner',
-            examTypePerformance: {},
+            proficiencyLevel: 'beginner' as ProficiencyLevel,
+            examTypePerformance: {
+              'UPSC': { correct: 0, total: 0, accuracy: 0 },
+              'PSC': { correct: 0, total: 0, accuracy: 0 },
+              'SSC': { correct: 0, total: 0, accuracy: 0 },
+              'Banking': { correct: 0, total: 0, accuracy: 0 }
+            },
             subjectPerformance: {}
           };
         }

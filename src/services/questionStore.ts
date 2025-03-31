@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Question, QuestionDifficulty, ExamType } from '@/types';
+import { Question, QuestionDifficulty, ExamType, Subject } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface QuestionStore {
@@ -13,6 +13,7 @@ interface QuestionStore {
   getAllQuestions: () => Question[];
   getQuestionsByExamType: (examType: ExamType) => Question[];
   getQuestionsByDifficulty: (difficulty: QuestionDifficulty) => Question[];
+  getQuestionsBySubject: (subject: Subject) => Question[];
   addCustomQuestion: (question: Omit<Question, 'id'>) => void;
   clearAllQuestions: () => void;
 }
@@ -63,6 +64,12 @@ export const useQuestionStore = create<QuestionStore>()(
       getQuestionsByDifficulty: (difficulty) => {
         return get().customQuestions.filter(
           (question) => question.difficulty === difficulty
+        );
+      },
+      
+      getQuestionsBySubject: (subject) => {
+        return get().customQuestions.filter(
+          (question) => question.subject === subject
         );
       },
       

@@ -75,10 +75,6 @@ const QuestionTimer = ({ timeLimit, onTimeUp, isPaused }: QuestionTimerProps) =>
             ? 'bg-rose-100 dark:bg-rose-950/30' 
             : 'bg-slate-100 dark:bg-slate-800'
         }`}
-        indicatorClassName={isWarning 
-          ? 'bg-gradient-to-r from-rose-500 to-red-500' 
-          : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'
-        }
       />
     </div>
   );
