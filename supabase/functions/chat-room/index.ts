@@ -20,7 +20,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { action, examType, message, userId, userName } = await req.json();
+    const requestBody = await req.json();
+    console.log("Request received:", JSON.stringify(requestBody));
+    
+    const { action, examType, message, userId, userName } = requestBody;
 
     // Handle different actions
     if (action === 'send-message') {
@@ -29,6 +32,13 @@ serve(async (req) => {
           JSON.stringify({ error: 'Missing required fields: message, userId, and examType are required' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
+      }
+
+      // Create chat_messages table if it doesn't exist
+      const { error: tableError } = await supabase.rpc('create_chat_messages_if_not_exists');
+      if (tableError) {
+        console.log('Error checking/creating chat_messages table:', tableError);
+        // Continue anyway, the table might already exist
       }
 
       // Insert the message into the chat_messages table
@@ -60,6 +70,13 @@ serve(async (req) => {
           JSON.stringify({ error: 'Missing required field: examType' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
+      }
+
+      // Create chat_messages table if it doesn't exist
+      const { error: tableError } = await supabase.rpc('create_chat_messages_if_not_exists');
+      if (tableError) {
+        console.log('Error checking/creating chat_messages table:', tableError);
+        // Continue anyway, the table might already exist
       }
 
       // Get chat messages for the specified exam type, limited to the last 100 messages

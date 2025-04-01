@@ -63,3 +63,30 @@ export const getApiKey = async (key: string): Promise<string | null> => {
     return null;
   }
 };
+
+/**
+ * Helper function to verify if a required API key is configured
+ */
+export const verifyApiKeyConfigured = async (key: string): Promise<boolean> => {
+  const value = await getApiKey(key);
+  return !!value;
+};
+
+/**
+ * Create or ensure settings table exists
+ */
+export const ensureSettingsTableExists = async (): Promise<boolean> => {
+  try {
+    const { error } = await supabase.rpc('create_settings_if_not_exists');
+    
+    if (error) {
+      console.error('Error ensuring settings table exists:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in ensureSettingsTableExists:', error);
+    return false;
+  }
+};

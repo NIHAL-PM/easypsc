@@ -22,6 +22,22 @@ serve(async (req) => {
     // Parse the request body
     const { action, key, value } = await req.json();
 
+    // Create settings table if it doesn't exist
+    const { error: tableError } = await supabase.rpc('create_settings_if_not_exists');
+    if (tableError) {
+      console.log('Error checking/creating settings table:', tableError);
+      // Try to create it manually if the RPC doesn't exist
+      await supabase.query(`
+        CREATE TABLE IF NOT EXISTS public.settings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          key TEXT UNIQUE NOT NULL,
+          value TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+        );
+      `);
+    }
+
     // Handle different actions
     if (action === 'get') {
       if (!key) {

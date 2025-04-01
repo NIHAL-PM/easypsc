@@ -17,7 +17,8 @@ export const generateQuestions = async ({
   examType,
   difficulty,
   count,
-  askedQuestionIds = []
+  askedQuestionIds = [],
+  language = 'english'
 }: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
     console.log('Generating questions with Supabase Edge Function');
@@ -28,7 +29,8 @@ export const generateQuestions = async ({
         examType,
         difficulty,
         count,
-        askedQuestionIds
+        askedQuestionIds,
+        language
       }
     });
     

@@ -20,7 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { action, prompt, count, examType, difficulty, askedQuestionIds } = await req.json();
+    const { action, prompt, count, examType, difficulty, askedQuestionIds, language = 'english' } = await req.json();
 
     // Get the stored API key from our settings table
     const { data: settingsData, error: settingsError } = await supabase
@@ -42,15 +42,16 @@ serve(async (req) => {
     // Handle different actions
     if (action === 'generate-questions') {
       if (!prompt) {
-        // Create a prompt for question generation
+        // Create a prompt for question generation with the specified language
         const generationPrompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
         Difficulty level: ${difficulty}.
-        Generate questions in English.
+        Generate questions in ${language}.
         
         Critical requirements:
         1. Generate completely new and unique questions that have not been used before.
         2. Each question must have a different topic/concept to ensure variety.
         3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
+        4. The language of the questions must be ${language}.
         
         Format each question with:
         1. Question text
@@ -67,10 +68,11 @@ serve(async (req) => {
           "correctOption": 0,
           "explanation": "explanation of the correct answer",
           "category": "subject/category",
-          "difficulty": "${difficulty}"
+          "difficulty": "${difficulty}",
+          "language": "${language}"
         }`;
 
-        console.log('Calling Gemini API with generated prompt');
+        console.log('Calling Gemini API with generated prompt for language:', language);
         
         // Call the Gemini API
         const response = await fetch(
@@ -135,7 +137,8 @@ serve(async (req) => {
             difficulty_level: q.difficulty,
             tags: [q.category],
             exam_category_id: null, // We'll need to create a mapping for this
-            is_current_affairs: false
+            is_current_affairs: false,
+            language: language
           })));
 
         if (insertError) {

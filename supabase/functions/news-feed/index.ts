@@ -45,14 +45,22 @@ serve(async (req) => {
       }
       
       // If no cached news or cache error, fetch from News API
-      const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY');
-      if (!NEWS_API_KEY) {
-        console.error('NEWS_API_KEY not configured');
+      // Get NEWS_API_KEY from settings table instead of environment variable
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'NEWS_API_KEY')
+        .single();
+      
+      if (settingsError || !settingsData?.value) {
+        console.error('NEWS_API_KEY not configured in settings table');
         return new Response(
           JSON.stringify({ error: 'News API key not configured' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
+      
+      const NEWS_API_KEY = settingsData.value;
       
       // Prepare category mapping for News API
       const categoryMapping: Record<string, string> = {
@@ -73,10 +81,12 @@ serve(async (req) => {
       
       try {
         const newsApiUrl = `https://newsapi.org/v2/top-headlines?country=in&category=${newsCategory}&apiKey=${NEWS_API_KEY}`;
+        console.log('Fetching news from:', newsApiUrl);
         const newsResponse = await fetch(newsApiUrl);
         const newsData = await newsResponse.json();
         
         if (!newsResponse.ok) {
+          console.error('News API error:', newsData);
           throw new Error(newsData.message || 'Failed to fetch news');
         }
         

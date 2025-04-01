@@ -1,45 +1,119 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle, KeyRound, Users, MessageSquare, BarChart } from 'lucide-react';
+import { AlertTriangle, CheckCircle, KeyRound, Users, MessageSquare, BarChart, LockIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import ApiKeyManager from './ApiKeyManager';
 import { getSystemStats } from '@/services/api';
 import { useAppStore } from '@/lib/store';
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminPanel = () => {
   const { user } = useAppStore();
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && !user.isPremium) {
+    // Check if user is admin
+    const checkAdminStatus = async () => {
+      // Special case: hardcoded admin credentials
+      if (localStorage.getItem('isAdminAuthenticated') === 'true') {
+        setIsAdminUser(true);
+        return;
+      }
+      
+      // No further checks if user is not logged in
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .rpc('is_admin', { user_id: user.id });
+          
+        if (error) {
+          console.error('Error checking admin status:', error);
+          return;
+        }
+        
+        setIsAdminUser(!!data);
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
+
+  const handleAdminLogin = () => {
+    // Hardcoded admin credentials for demonstration
+    if (adminCredentials.username === 'bluewaterbottle' && 
+        adminCredentials.password === 'waterbottle') {
+      setIsAdminUser(true);
+      localStorage.setItem('isAdminAuthenticated', 'true');
       toast({
-        title: "Admin Access",
-        description: "You must be a premium user to access the admin panel.",
+        title: "Admin Access Granted",
+        description: "You have successfully logged in as admin.",
+        variant: "default",
+      });
+    } else {
+      toast({
+        title: "Invalid Credentials",
+        description: "The username or password you entered is incorrect.",
         variant: "destructive",
       });
     }
-  }, [user, toast]);
+  };
 
-  if (!user || !user.isPremium) {
+  const handleLogout = () => {
+    setIsAdminUser(false);
+    localStorage.removeItem('isAdminAuthenticated');
+  };
+
+  if (!isAdminUser) {
     return (
       <div className="container mx-auto py-10">
-        <Card className="w-full max-w-2xl mx-auto">
+        <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Admin Access Denied
+              <LockIcon className="h-5 w-5" />
+              Admin Access
             </CardTitle>
             <CardDescription>
-              You must be a premium user to access the admin panel.
+              Please login with admin credentials to access the admin panel.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            Please upgrade to a premium account to access admin features.
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input 
+                id="username" 
+                value={adminCredentials.username}
+                onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="Enter admin username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password"
+                value={adminCredentials.password}
+                onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Enter admin password"
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handleAdminLogin}
+            >
+              Login as Admin
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -48,6 +122,11 @@ const AdminPanel = () => {
 
   return (
     <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <Button variant="outline" onClick={handleLogout}>Logout</Button>
+      </div>
+      
       <Tabs defaultValue="system" className="w-full max-w-4xl mx-auto space-y-4">
         <TabsList>
           <TabsTrigger value="system" className="flex items-center gap-2">
@@ -58,12 +137,26 @@ const AdminPanel = () => {
             <KeyRound className="h-4 w-4" />
             API Configuration
           </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            User Management
+          </TabsTrigger>
+          <TabsTrigger value="content" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Content Management
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="system" className="space-y-4">
           <SystemStats />
         </TabsContent>
         <TabsContent value="api" className="space-y-4">
           <ApiKeyManager onApiKeyConfigured={setIsApiKeyConfigured} />
+        </TabsContent>
+        <TabsContent value="users" className="space-y-4">
+          <UserManagement />
+        </TabsContent>
+        <TabsContent value="content" className="space-y-4">
+          <ContentManagement />
         </TabsContent>
       </Tabs>
     </div>
@@ -161,6 +254,148 @@ const SystemStats = () => {
               </Card>
             </div>
           </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// User Management component
+const UserManagement = () => {
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, preferred_language, created_at');
+          
+        if (error) {
+          throw error;
+        }
+        
+        setUsers(data || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, []);
+  
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          User Management
+        </CardTitle>
+        <CardDescription>
+          Manage user accounts and permissions
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-4">Loading users...</div>
+        ) : (
+          <div className="rounded-md border">
+            <div className="grid grid-cols-4 gap-4 p-4 font-medium border-b">
+              <div>User ID</div>
+              <div>Name</div>
+              <div>Language</div>
+              <div>Joined</div>
+            </div>
+            <div className="divide-y">
+              {users.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">No users found</div>
+              ) : (
+                users.map((user: any) => (
+                  <div key={user.id} className="grid grid-cols-4 gap-4 p-4">
+                    <div className="truncate">{user.id}</div>
+                    <div>{user.full_name || 'Unnamed'}</div>
+                    <div>{user.preferred_language || 'English'}</div>
+                    <div>{new Date(user.created_at).toLocaleDateString()}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Content Management component
+const ContentManagement = () => {
+  const [questions, setQuestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('questions')
+          .select('id, question, difficulty_level, created_at')
+          .order('created_at', { ascending: false })
+          .limit(10);
+          
+        if (error) {
+          throw error;
+        }
+        
+        setQuestions(data || []);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchQuestions();
+  }, []);
+  
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          Content Management
+        </CardTitle>
+        <CardDescription>
+          Manage exam questions and content
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-4">Loading content...</div>
+        ) : (
+          <div className="rounded-md border">
+            <div className="grid grid-cols-3 gap-4 p-4 font-medium border-b">
+              <div>Question</div>
+              <div>Difficulty</div>
+              <div>Created</div>
+            </div>
+            <div className="divide-y">
+              {questions.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">No questions found</div>
+              ) : (
+                questions.map((question: any) => (
+                  <div key={question.id} className="grid grid-cols-3 gap-4 p-4">
+                    <div className="truncate">{question.question}</div>
+                    <div>{question.difficulty_level || 'Medium'}</div>
+                    <div>{new Date(question.created_at).toLocaleDateString()}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
