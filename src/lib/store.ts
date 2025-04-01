@@ -323,9 +323,25 @@ export const useAppStore = create<AppStoreWithActions>()(
           };
         }
         
+        // Initialize default values for empty or missing performance data
+        const defaultSubjectPerformance = {
+          'Polity': { correct: 0, total: 0, avgTime: 0 },
+          'Economics': { correct: 0, total: 0, avgTime: 0 },
+          'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
+          'History': { correct: 0, total: 0, avgTime: 0 },
+          'Geography': { correct: 0, total: 0, avgTime: 0 },
+          'Science': { correct: 0, total: 0, avgTime: 0 },
+          'Environment': { correct: 0, total: 0, avgTime: 0 },
+          'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
+          'English Language': { correct: 0, total: 0, avgTime: 0 },
+          'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
+        };
+        
+        const userSubjectPerformance = user.subjectPerformance || defaultSubjectPerformance;
+        
         // Calculate weak and strong categories
-        // FIX: Ensure that subjectPerformance exists before using Object.entries
-        const subjectEntries = user.subjectPerformance ? Object.entries(user.subjectPerformance) : [];
+        // Ensure subjectPerformance exists and handle empty objects
+        const subjectEntries = Object.entries(userSubjectPerformance || {});
         const activeSubjects = subjectEntries.filter(([_, stats]) => stats && stats.total > 0);
         
         // Sort by accuracy
@@ -352,25 +368,11 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         // For now, we'll just use the current exam type for stats
         examTypePerformance[user.examType] = {
-          correct: user.questionsCorrect,
-          total: user.questionsAnswered,
+          correct: user.questionsCorrect || 0,
+          total: user.questionsAnswered || 0,
           accuracy: user.questionsAnswered > 0 
             ? (user.questionsCorrect / user.questionsAnswered) * 100 
             : 0
-        };
-        
-        // Ensure that subjectPerformance exists
-        const subjectPerformance = user.subjectPerformance || {
-          'Polity': { correct: 0, total: 0, avgTime: 0 },
-          'Economics': { correct: 0, total: 0, avgTime: 0 },
-          'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
-          'History': { correct: 0, total: 0, avgTime: 0 },
-          'Geography': { correct: 0, total: 0, avgTime: 0 },
-          'Science': { correct: 0, total: 0, avgTime: 0 },
-          'Environment': { correct: 0, total: 0, avgTime: 0 },
-          'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
-          'English Language': { correct: 0, total: 0, avgTime: 0 },
-          'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
         };
         
         return {
@@ -385,7 +387,7 @@ export const useAppStore = create<AppStoreWithActions>()(
           hearts: user.hearts || 0,
           proficiencyLevel: user.proficiencyLevel || 'beginner',
           examTypePerformance,
-          subjectPerformance
+          subjectPerformance: userSubjectPerformance
         };
       },
       
@@ -460,7 +462,7 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         const updatedUser = {
           ...user,
-          hearts: user.hearts + 1
+          hearts: (user.hearts || 0) + 1
         };
         
         // Update allUsers as well

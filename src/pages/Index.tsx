@@ -235,8 +235,11 @@ const Index = () => {
                 
                 <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
                   <CardContent className="p-0">
-                    {/* Fix: Wrap TabsList and TabsContent within the same Tabs component */}
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'progress')} className="w-full">
+                    {/* Fix: Properly implement Tabs component */}
+                    <Tabs 
+                      value={activeTab} 
+                      onValueChange={(value) => setActiveTab(value as 'questions' | 'chat' | 'progress')}
+                    >
                       <TabsList className="grid grid-cols-1 h-auto p-1">
                         <TabsTrigger 
                           value="questions" 
@@ -285,7 +288,7 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Main content area - Fix: Remove TabsContent and use renderTabContent instead */}
+            {/* Main content area - Use renderTabContent instead of TabsContent */}
             <div className="md:w-3/4">
               {renderTabContent()}
             </div>
