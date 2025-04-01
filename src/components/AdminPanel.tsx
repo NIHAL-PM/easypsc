@@ -733,7 +733,7 @@ const AdminPanel = () => {
                 <Label htmlFor="difficulty">Difficulty</Label>
                 <Select 
                   value={newQuestion.difficulty || 'medium'}
-                  onValueChange={(value) => setNewQuestion({...newQuestion, difficulty: value})}
+                  onValueChange={(value: any) => setNewQuestion({...newQuestion, difficulty: value as QuestionDifficulty})}
                 >
                   <SelectTrigger id="difficulty">
                     <SelectValue placeholder="Select difficulty" />
@@ -858,17 +858,4 @@ const AdminPanel = () => {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default AdminPanel;
+            <Button variant="outline" onClick={() => setShowEditDialog(
