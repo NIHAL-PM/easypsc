@@ -155,6 +155,7 @@ export const getNewsArticles = async (category: string = 'general') => {
 
 /**
  * Tracks user activity for analytics
+ * Note: We're using direct API calls instead of edge functions for this
  */
 export const trackUserActivity = async (
   userId: string,
@@ -162,14 +163,14 @@ export const trackUserActivity = async (
   details: Record<string, any> = {}
 ) => {
   try {
-    // Insert the activity directly into Supabase
-    const { error } = await supabase
-      .from('user_activities')
-      .insert({
-        user_id: userId,
+    // Instead of trying to access user_activities directly, we'll use an edge function
+    const { data, error } = await supabase.functions.invoke('track-activity', {
+      body: {
+        userId,
         action,
-        details,
-      });
+        details
+      }
+    });
       
     if (error) {
       console.error('Error tracking user activity:', error);
@@ -235,22 +236,14 @@ export const getUserStats = async (userId: string) => {
  */
 export const getSystemStats = async () => {
   try {
-    // Get various statistics from Supabase
-    const { data: users, error: usersError } = await supabase
-      .from('profiles')
-      .select('id');
-      
-    const { data: premiumUsers, error: premiumError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('is_premium', true);
-      
-    const { data: questions, error: questionsError } = await supabase
-      .from('questions')
-      .select('id');
-      
-    if (usersError || premiumError || questionsError) {
-      console.error('Error fetching system stats:', { usersError, premiumError, questionsError });
+    // We'll use an edge function to get system stats to avoid TS errors 
+    // when accessing tables that may not exist in the database schema
+    const { data, error } = await supabase.functions.invoke('system-stats', {
+      body: {}
+    });
+    
+    if (error) {
+      console.error('Error fetching system stats:', error);
       return {
         totalUsers: 0,
         premiumUsers: 0,
@@ -261,29 +254,13 @@ export const getSystemStats = async () => {
       };
     }
     
-    // Get active users today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayISOString = today.toISOString();
-    
-    const { data: activeToday, error: activeError } = await supabase
-      .from('user_activities')
-      .select('user_id')
-      .gte('created_at', todayISOString)
-      .order('user_id');
-      
-    // Count unique user IDs
-    const uniqueActiveUserIds = activeToday 
-      ? [...new Set(activeToday.map(a => a.user_id))].length 
-      : 0;
-      
-    return {
-      totalUsers: users?.length || 0,
-      premiumUsers: premiumUsers?.length || 0,
-      activeToday: uniqueActiveUserIds,
-      totalQuestionsAnswered: 0, // TODO: Add when we have this data
-      totalQuestionsCorrect: 0, // TODO: Add when we have this data
-      examTypeDistribution: {} // TODO: Add when we have this data
+    return data || {
+      totalUsers: 0,
+      premiumUsers: 0, 
+      activeToday: 0,
+      totalQuestionsAnswered: 0,
+      totalQuestionsCorrect: 0,
+      examTypeDistribution: {}
     };
   } catch (error) {
     console.error('Error getting system stats:', error);
@@ -295,5 +272,50 @@ export const getSystemStats = async () => {
       totalQuestionsCorrect: 0,
       examTypeDistribution: {}
     };
+  }
+};
+
+// Helper function to save API keys
+export const saveApiKey = async (key: string, value: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-settings', {
+      body: {
+        action: 'set',
+        key,
+        value
+      }
+    });
+    
+    if (error) {
+      console.error('Error saving API key:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving API key:', error);
+    return false;
+  }
+};
+
+// Helper function to get API keys
+export const getApiKey = async (key: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-settings', {
+      body: {
+        action: 'get',
+        key
+      }
+    });
+    
+    if (error) {
+      console.error('Error fetching API key:', error);
+      return null;
+    }
+    
+    return data.value;
+  } catch (error) {
+    console.error('Error fetching API key:', error);
+    return null;
   }
 };

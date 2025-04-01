@@ -20,86 +20,104 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { action, category } = await req.json();
+    const { action, category = 'general' } = await req.json();
 
-    // Get the NEWS API key from our settings table
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'NEWS_API_KEY')
-      .single();
-
-    if (settingsError || !settingsData) {
-      console.error('Error fetching NEWS API key:', settingsError);
-      // If no API key, return some mock data for testing
-      return new Response(
-        JSON.stringify({ 
-          articles: [
-            {
-              title: "Mock News Article 1",
-              description: "This is a mock news article for testing purposes",
-              url: "https://example.com",
-              urlToImage: "https://via.placeholder.com/150",
-              publishedAt: new Date().toISOString(),
-              source: { name: "Mock News Source" }
-            },
-            {
-              title: "Mock News Article 2",
-              description: "This is another mock news article for testing purposes",
-              url: "https://example.com",
-              urlToImage: "https://via.placeholder.com/150",
-              publishedAt: new Date(Date.now() - 86400000).toISOString(),
-              source: { name: "Mock News Source" }
-            }
-          ] 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const NEWS_API_KEY = settingsData.value;
-    
+    // Handle the get-news action
     if (action === 'get-news') {
-      // Fetch news from NEWS API
-      const newsCategory = category || 'general';
-      const newsApiUrl = `https://newsapi.org/v2/top-headlines?country=in&category=${newsCategory}&apiKey=${NEWS_API_KEY}`;
+      // First, check if we have recent cached news in the database
+      const cacheTimeWindow = new Date();
+      cacheTimeWindow.setHours(cacheTimeWindow.getHours() - 1); // Cache for 1 hour
       
-      console.log(`Fetching news from category: ${newsCategory}`);
-      const response = await fetch(newsApiUrl);
+      const { data: cachedNews, error: cacheError } = await supabase
+        .from('news_articles')
+        .select('*')
+        .eq('category', category)
+        .gte('created_at', cacheTimeWindow.toISOString())
+        .order('published_at', { ascending: false })
+        .limit(10);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('News API error:', errorData);
+      if (cachedNews && cachedNews.length > 0) {
+        console.log('Returning cached news articles');
         return new Response(
-          JSON.stringify({ error: `News API error: ${response.status}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+          JSON.stringify({ articles: cachedNews }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      const newsData = await response.json();
-      
-      // Cache news in Supabase for future reference and faster access
-      const { error: insertError } = await supabase
-        .from('news_articles')
-        .insert(newsData.articles.map(article => ({
-          title: article.title,
-          description: article.description,
-          url: article.url,
-          image_url: article.urlToImage,
-          published_at: article.publishedAt,
-          source: article.source?.name,
-          category: newsCategory
-        })));
-        
-      if (insertError) {
-        console.error('Error caching news articles:', insertError);
-        // Continue anyway, we'll return the articles even if caching fails
+      // If no cached news or cache error, fetch from News API
+      const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY');
+      if (!NEWS_API_KEY) {
+        console.error('NEWS_API_KEY not configured');
+        return new Response(
+          JSON.stringify({ error: 'News API key not configured' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
       }
       
-      return new Response(
-        JSON.stringify(newsData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Prepare category mapping for News API
+      const categoryMapping: Record<string, string> = {
+        'general': 'general',
+        'business': 'business',
+        'technology': 'technology',
+        'entertainment': 'entertainment',
+        'health': 'health',
+        'science': 'science',
+        'sports': 'sports',
+        'upsc': 'general', // Map exam categories to general news
+        'psc': 'general',
+        'ssc': 'general',
+        'banking': 'business', // Banking exams get business news
+      };
+      
+      const newsCategory = categoryMapping[category.toLowerCase()] || 'general';
+      
+      try {
+        const newsApiUrl = `https://newsapi.org/v2/top-headlines?country=in&category=${newsCategory}&apiKey=${NEWS_API_KEY}`;
+        const newsResponse = await fetch(newsApiUrl);
+        const newsData = await newsResponse.json();
+        
+        if (!newsResponse.ok) {
+          throw new Error(newsData.message || 'Failed to fetch news');
+        }
+        
+        if (newsData.articles && newsData.articles.length > 0) {
+          // Store articles in the database for caching
+          const articlesToInsert = newsData.articles.map((article: any) => ({
+            title: article.title || 'No Title',
+            description: article.description || '',
+            url: article.url || '',
+            image_url: article.urlToImage || '',
+            published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date().toISOString(),
+            source: article.source?.name || '',
+            category: category.toLowerCase()
+          }));
+          
+          // Insert articles for caching
+          const { error: insertError } = await supabase
+            .from('news_articles')
+            .insert(articlesToInsert);
+            
+          if (insertError) {
+            console.error('Error caching news articles:', insertError);
+          }
+          
+          return new Response(
+            JSON.stringify({ articles: articlesToInsert }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          return new Response(
+            JSON.stringify({ articles: [], message: 'No news articles found' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (fetchError) {
+        console.error('Error fetching from News API:', fetchError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch news articles' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
     } else {
       return new Response(
         JSON.stringify({ error: 'Invalid action specified' }),

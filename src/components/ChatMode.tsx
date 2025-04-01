@@ -1,155 +1,141 @@
-
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
-import { SendIcon, Sparkles, MessageSquare } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { MessageSquare, Send, UserIcon, Users } from 'lucide-react';
 import { generateChat } from '@/services/api';
-import { getGeminiApiKey } from '@/lib/env';
-import ApiKeyInput from '@/components/ApiKeyInput';
+import { useAppStore } from '@/lib/store';
 
-interface ChatResponse {
-  text: string;
-  timestamp: Date;
-  isUser: boolean;
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-const ChatMode = () => {
-  const [userMessage, setUserMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<ChatResponse[]>([
-    {
-      text: "Hello! I'm your exam preparation assistant. Ask me any question related to your exam preparation!",
-      timestamp: new Date(),
-      isUser: false
-    }
-  ]);
-  const [apiKey, setApiKey] = useState<string | undefined>(localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey());
-  
+const ChatMode: React.FC = () => {
+  const { user } = useAppStore();
   const { toast } = useToast();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
 
   const handleSendMessage = async () => {
-    if (!userMessage.trim()) return;
+    if (!inputValue.trim()) return;
     
-    // Add user message to conversation
-    const userMsg = {
-      text: userMessage,
-      timestamp: new Date(),
-      isUser: true
-    };
-    
-    setConversation(prev => [...prev, userMsg]);
     setIsLoading(true);
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: inputValue }
+    ]);
+    setInputValue('');
     
     try {
-      // Get the response from Gemini
-      const result = await generateChat(userMessage, apiKey || '');
+      // Fixed: generateChat only takes one parameter
+      const response = await generateChat(inputValue);
       
-      // Add AI response to conversation
-      const aiResponse = {
-        text: result || "I'm sorry, I couldn't generate a response. Please try again.",
-        timestamp: new Date(),
-        isUser: false
-      };
-      
-      setConversation(prev => [...prev, aiResponse]);
+      if (response) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: response }
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: "I'm sorry, I couldn't generate a response. Please try again." }
+        ]);
+      }
     } catch (error) {
       console.error('Error generating chat response:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate a response. Please try again.',
-        variant: 'destructive'
-      });
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: "There was an error generating a response. Please try again." }
+      ]);
     } finally {
       setIsLoading(false);
-      setUserMessage('');
     }
   };
 
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
-  };
-
-  if (!apiKey) {
-    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
-  }
-
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="border-b pb-3">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <CardTitle>Chat with AI Assistant</CardTitle>
+    <Card className="border shadow-md h-[600px] flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <CardTitle>AI Chat Mode</CardTitle>
+          </div>
         </div>
         <CardDescription>
-          Ask questions about exam preparation, concepts, or study techniques
+          Chat with an AI assistant to get your doubts cleared
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-4 h-[400px] overflow-y-auto flex flex-col gap-4">
-        {conversation.map((msg, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-          >
-            <div 
-              className={`max-w-[80%] rounded-lg p-3 ${
-                msg.isUser 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted'
-              }`}
-            >
-              <p className="text-sm">{msg.text}</p>
-              <p className="text-xs opacity-70 mt-1">
-                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+      
+      <ScrollArea className="flex-1 px-4 py-2">
+        <div className="space-y-4">
+          {messages.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No messages yet</p>
+              <p className="text-sm">Start the conversation!</p>
             </div>
-          </motion.div>
-        ))}
-        {isLoading && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
-            <div className="max-w-[80%] rounded-lg p-3 bg-muted">
-              <div className="flex gap-1">
-                <span className="animate-bounce">•</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>•</span>
-                <span className="animate-bounce" style={{ animationDelay: '0.4s' }}>•</span>
+          ) : (
+            messages.map((msg, index) => (
+              <div 
+                key={index} 
+                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {msg.role !== 'user' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      AI
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                
+                <div 
+                  className={`
+                    max-w-[80%] rounded-lg px-3 py-2 
+                    ${msg.role === 'user'
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted'
+                    }
+                  `}
+                >
+                  <p className="text-sm break-words">{msg.content}</p>
+                </div>
+                
+                {msg.role === 'user' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                      {user?.name.substring(0, 2).toUpperCase() || 'ME'}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
               </div>
-            </div>
-          </motion.div>
-        )}
-      </CardContent>
-      <CardFooter className="border-t p-3">
-        <div className="flex w-full gap-2">
-          <Textarea
-            value={userMessage}
-            onChange={(e) => setUserMessage(e.target.value)}
-            placeholder="Type your question here..."
-            className="resize-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
+            ))
+          )}
+        </div>
+      </ScrollArea>
+      
+      <CardFooter className="p-4 border-t">
+        <div className="flex items-center gap-2 w-full">
+          <Input
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1"
           />
           <Button 
-            onClick={handleSendMessage} 
-            disabled={isLoading || !userMessage.trim()}
-            size="icon"
+            onClick={handleSendMessage}
+            size="icon" 
+            disabled={isLoading || !inputValue.trim()}
           >
-            {isLoading ? (
-              <Sparkles className="h-4 w-4 animate-pulse" />
-            ) : (
-              <SendIcon className="h-4 w-4" />
-            )}
+            <Send className="h-4 w-4" />
           </Button>
         </div>
       </CardFooter>
