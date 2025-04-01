@@ -1,5 +1,4 @@
-
-import { Question, ExamType, QuestionDifficulty, Subject } from '@/types';
+import { Question, ExamType, QuestionDifficulty } from '@/types';
 import { getGeminiApiKey, isGeminiApiKeyConfigured } from '@/lib/env';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,7 +7,6 @@ interface GenerateQuestionsOptions {
   difficulty: QuestionDifficulty;
   count: number;
   askedQuestionIds?: string[];
-  subject?: Subject | null;
 }
 
 /**

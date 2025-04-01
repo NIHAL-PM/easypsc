@@ -1,9 +1,6 @@
-
 export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'English' | 'Hindi' | 'Tamil' | 'Telugu' | 'Malayalam';
-export type Subject = 'Polity' | 'Economics' | 'Art & Culture' | 'History' | 'Geography' | 'Science' | 'Environment' | 'Current Affairs' | 'English Language' | 'General Knowledge';
-export type ProficiencyLevel = 'beginner' | 'intermediate' | 'proficient' | 'expert';
 
 export interface User {
   id: string;
@@ -17,16 +14,6 @@ export interface User {
   currentStreak: number;
   lastActive: Date | null;
   lastQuestionTime: number | null;
-  hearts: number;
-  proficiencyLevel: ProficiencyLevel;
-  subjectPerformance: Record<Subject, { correct: number; total: number; avgTime: number }>;
-  questionHistory: {
-    questionId: string;
-    selectedOption: number;
-    isCorrect: boolean;
-    timeSpent: number;
-    date: number;
-  }[];
 }
 
 export interface Question {
@@ -37,8 +24,6 @@ export interface Question {
   explanation: string;
   category: string;
   difficulty: QuestionDifficulty;
-  subject?: Subject;
-  timeLimit?: number; // in seconds
 }
 
 export interface CurrentAffairsItem {
@@ -57,10 +42,6 @@ export interface UserStats {
   weakCategories: string[];
   strongCategories: string[];
   streakDays: number;
-  hearts: number;
-  proficiencyLevel: ProficiencyLevel;
-  examTypePerformance: Record<ExamType, { correct: number; total: number; accuracy: number }>;
-  subjectPerformance: Record<Subject, { correct: number; total: number; avgTime: number }>;
 }
 
 export interface AppState {
@@ -72,13 +53,4 @@ export interface AppState {
   isLoading: boolean;
   showExplanation: boolean;
   askedQuestionIds: string[];
-  questionsWithTimer: boolean;
-  currentQuestionStartTime: number | null;
-  timeRemaining: number | null;
-  mixedDifficultySettings: {
-    easy: number;
-    medium: number;
-    hard: number;
-  };
-  selectedSubject: Subject | null;
 }

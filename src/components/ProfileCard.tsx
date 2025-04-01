@@ -5,15 +5,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { Crown, LineChart, ArrowRight, Award, BarChart3, User, Rocket, Brain, BookOpen, Medal, Flame } from 'lucide-react';
+import { Crown, LineChart, ArrowRight, Award, BarChart3, User, Rocket, Sparkles, PersonStanding, Brain, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ExamType, Subject } from '@/types';
+import { ExamType } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
 
 const ProfileCard = () => {
-  const { user, getUserStats, changeExamType, setSelectedSubject } = useAppStore();
+  const { user, getUserStats, changeExamType } = useAppStore();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -28,14 +27,6 @@ const ProfileCard = () => {
     toast({
       title: "Exam Type Changed",
       description: `Your exam type has been updated to ${value}`,
-    });
-  };
-  
-  const handleSubjectChange = (value: string) => {
-    setSelectedSubject(value as Subject || null);
-    toast({
-      title: "Subject Filter Applied",
-      description: value ? `Questions will now focus on ${value}` : "Subject filter removed",
     });
   };
   
@@ -65,32 +56,15 @@ const ProfileCard = () => {
             <div>
               <CardTitle className="text-xl text-indigo-700 dark:text-indigo-300">{user.name}</CardTitle>
               <CardDescription className="flex items-center gap-1">
-                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300 border-0 px-2 py-0 text-xs font-normal">
-                  {user.examType} Aspirant
-                </Badge>
+                <PersonStanding className="w-3 h-3 text-indigo-500" />
+                <span>{user.examType} Aspirant</span>
                 {user.isPremium && (
-                  <Badge className="bg-gradient-to-r from-amber-400 to-yellow-300 text-white border-0 px-2 py-0 text-xs font-normal">
+                  <span className="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gradient-to-r from-amber-400 to-yellow-300 text-white">
                     <Crown className="w-3 h-3 mr-0.5" /> PREMIUM
-                  </Badge>
+                  </span>
                 )}
               </CardDescription>
             </div>
-          </div>
-          
-          <div className="mt-3 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
-            <div className="flex items-center gap-1 text-sm text-indigo-700 dark:text-indigo-300">
-              <Medal className="w-4 h-4 text-indigo-500" />
-              <span>Proficiency:</span>
-            </div>
-            <Badge className={`
-              capitalize border-0 px-2 py-0 text-xs
-              ${user.proficiencyLevel === 'beginner' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
-              ${user.proficiencyLevel === 'intermediate' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-              ${user.proficiencyLevel === 'proficient' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : ''}
-              ${user.proficiencyLevel === 'expert' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-            `}>
-              {user.proficiencyLevel}
-            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -98,7 +72,7 @@ const ProfileCard = () => {
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
               <BookOpen className="w-3 h-3 text-indigo-500" />
-              Exam Type
+              Change Exam Type
             </label>
             <Select 
               defaultValue={user.examType} 
@@ -112,32 +86,6 @@ const ProfileCard = () => {
                 <SelectItem value="PSC">PSC</SelectItem>
                 <SelectItem value="SSC">SSC</SelectItem>
                 <SelectItem value="Banking">Banking</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Subject Selector */}
-          <div className="space-y-2">
-            <label className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-              <BookOpen className="w-3 h-3 text-indigo-500" />
-              Subject Focus
-            </label>
-            <Select onValueChange={handleSubjectChange}>
-              <SelectTrigger className="bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700">
-                <SelectValue placeholder="All Subjects" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700">
-                <SelectItem value="">All Subjects</SelectItem>
-                <SelectItem value="Polity">Polity</SelectItem>
-                <SelectItem value="Economics">Economics</SelectItem>
-                <SelectItem value="Art & Culture">Art & Culture</SelectItem>
-                <SelectItem value="History">History</SelectItem>
-                <SelectItem value="Geography">Geography</SelectItem>
-                <SelectItem value="Science">Science</SelectItem>
-                <SelectItem value="Environment">Environment</SelectItem>
-                <SelectItem value="Current Affairs">Current Affairs</SelectItem>
-                <SelectItem value="English Language">English Language</SelectItem>
-                <SelectItem value="General Knowledge">General Knowledge</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -161,19 +109,19 @@ const ProfileCard = () => {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md">
               <div className="flex flex-col items-center">
-                <div className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{accuracy}%</div>
-                <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
-                  <Award className="w-3 h-3" /> Accuracy
+                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{accuracy}%</div>
+                <div className="text-sm text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
+                  <Award className="w-4 h-4" /> Accuracy
                 </div>
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-800/50 dark:to-indigo-950/30 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md">
               <div className="flex flex-col items-center">
-                <div className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{stats.correctAnswers}</div>
-                <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
-                  <BarChart3 className="w-3 h-3" /> Correct
+                <div className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{stats.correctAnswers}</div>
+                <div className="text-sm text-indigo-600 dark:text-indigo-400 mt-1 flex items-center gap-1">
+                  <BarChart3 className="w-4 h-4" /> Correct
                 </div>
               </div>
             </div>
@@ -187,7 +135,7 @@ const ProfileCard = () => {
                 </div>
                 <div>
                   <h4 className="font-medium text-amber-800 dark:text-amber-300 text-sm mb-1 flex items-center gap-1">
-                    <Flame className="w-3 h-3" /> Free Plan
+                    <Sparkles className="w-3 h-3" /> Free Plan
                   </h4>
                   <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
                     You have <span className="font-semibold">{questionsRemaining}</span> questions remaining this month.
@@ -213,7 +161,7 @@ const ProfileCard = () => {
             size="sm"
           >
             <LineChart className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
-            Full Statistics
+            View Detailed Stats
           </Button>
           <Button 
             variant="ghost" 

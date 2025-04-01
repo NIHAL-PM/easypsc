@@ -1,575 +1,270 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
-import { generateQuestions } from '@/services/api';
-import { Button } from './ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { useToast } from './ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import DifficultySelector from './DifficultySelector';
-import LoadingSpinner from './LoadingSpinner';
-import { Slider } from './ui/slider';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import { Label } from './ui/label';
-import { Input } from './ui/input';
-import {
-  BookOpen,
-  Clock,
-  ListChecks,
-  RefreshCw,
-  Shuffle,
-  ThumbsUp,
-  Zap,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { trackUserActivity } from '@/services/api';
-import { Question, QuestionDifficulty, Subject } from '@/types';
-import { isGeminiApiKeyConfigured } from '@/lib/env';
+import { useToast } from '@/components/ui/use-toast';
+import { generateQuestions, trackUserActivity } from '@/services/api';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { motion } from 'framer-motion';
+import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
+import { isGeminiApiKeyConfigured } from '@/lib/env';
+import { useQuestionStore } from '@/services/questionStore';
 
 const QuestionGenerator = () => {
-  const {
-    user,
-    setQuestions,
-    setCurrentQuestion,
-    setIsLoading,
-    isLoading,
+  const { 
+    user, 
+    setQuestions, 
+    setCurrentQuestion, 
+    setIsLoading, 
+    isLoading, 
     askedQuestionIds,
-    setLastQuestionTime,
-    questionsWithTimer,
-    toggleQuestionsWithTimer,
-    mixedDifficultySettings,
-    setMixedDifficultySettings,
-    selectedSubject,
-    setSelectedSubject,
+    setLastQuestionTime
   } = useAppStore();
-
-  const [difficulty, setDifficulty] = useState<QuestionDifficulty>('medium');
-  const [count, setCount] = useState(5);
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(!isGeminiApiKeyConfigured());
-  const [apiKey, setApiKey] = useState('');
-  const [generationMode, setGenerationMode] = useState<'standard' | 'mixed'>('standard');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [cooldownRemaining, setCooldownRemaining] = useState<number | null>(null);
-  const [showMixedSettings, setShowMixedSettings] = useState(false);
-
   const { toast } = useToast();
-
-  const subjectOptions: Subject[] = [
-    'Polity',
-    'Economics',
-    'Art & Culture',
-    'History',
-    'Geography',
-    'Science',
-    'Environment',
-    'Current Affairs',
-    'English Language',
-    'General Knowledge',
-  ];
-
-  useEffect(() => {
-    // Check for cooldown period
-    if (user?.lastQuestionTime) {
-      const now = Date.now();
-      const cooldownPeriod = 5 * 60 * 1000; // 5 minutes in ms
-      const elapsed = now - user.lastQuestionTime;
-      
-      if (elapsed < cooldownPeriod) {
-        const remaining = Math.ceil((cooldownPeriod - elapsed) / 1000);
-        setCooldownRemaining(remaining);
-        
-        // Set interval to update countdown
-        const interval = setInterval(() => {
-          setCooldownRemaining(prev => {
-            if (prev === null || prev <= 1) {
-              clearInterval(interval);
-              return null;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
-        return () => clearInterval(interval);
-      } else {
-        setCooldownRemaining(null);
-      }
-    }
-  }, [user?.lastQuestionTime]);
-
-  const formatCooldownTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  const navigate = useNavigate();
+  const { customQuestions } = useQuestionStore();
+  
+  const [difficulty, setDifficulty] = useState('medium');
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
+    return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
+  });
+  
+  const handleApiKeySubmit = (apiKey: string) => {
+    setApiKeyConfigured(true);
   };
-
+  
+  // Function to check if enough time has passed since last question generation
+  const canGenerateNewQuestions = () => {
+    if (!user) return true;
+    
+    const lastQuestionTime = user.lastQuestionTime;
+    if (!lastQuestionTime) return true;
+    
+    const now = new Date().getTime();
+    const timeSinceLastQuestion = now - lastQuestionTime;
+    const minWaitTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+    
+    return timeSinceLastQuestion > minWaitTime;
+  };
+  
   const handleGenerateQuestions = async () => {
-    if (!user) {
+    if (!user) return;
+    
+    // Check if API key is configured
+    if (!apiKeyConfigured) {
       toast({
-        title: 'Error',
-        description: 'Please login to generate questions',
-        variant: 'destructive',
+        title: "API Key Required",
+        description: "Please configure your Gemini API key first.",
+        variant: "destructive"
       });
       return;
     }
-
-    if (user.monthlyQuestionsRemaining <= 0 && !user.isPremium) {
+    
+    // Check if non-premium user has questions remaining
+    if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
       toast({
-        title: 'Monthly limit reached',
-        description: 'You have reached your monthly question limit. Upgrade to premium for unlimited questions!',
-        variant: 'destructive',
+        title: "Question limit reached",
+        description: "You've reached your monthly question limit. Upgrade to premium for unlimited questions.",
+        variant: "destructive"
+      });
+      
+      // Prompt to upgrade
+      const shouldUpgrade = window.confirm("Would you like to upgrade to premium for unlimited questions?");
+      if (shouldUpgrade) {
+        navigate("/premium");
+      }
+      return;
+    }
+    
+    // Check if we need to enforce a cooldown period
+    if (askedQuestionIds.length >= 10 && !canGenerateNewQuestions()) {
+      const lastTime = new Date(user.lastQuestionTime || 0);
+      const waitTimeMinutes = Math.ceil((10 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
+      
+      toast({
+        title: "Cooldown period",
+        description: `Please wait approximately ${waitTimeMinutes} more minutes before generating new questions.`,
+        variant: "destructive"
       });
       return;
     }
-
-    // Check for cooldown period
-    if (cooldownRemaining !== null) {
-      toast({
-        title: 'Generating too quickly',
-        description: `Please wait ${formatCooldownTime(cooldownRemaining)} before generating more questions.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Save API key to localStorage if provided
-    if (apiKey) {
-      localStorage.setItem('GEMINI_API_KEY', apiKey);
-      setShowApiKeyDialog(false);
-    }
-
+    
     setIsLoading(true);
-    setErrorMessage(null);
-
+    
     try {
-      let questions: Question[] = [];
-
-      if (generationMode === 'standard') {
-        // Standard mode - all questions have the same difficulty
-        questions = await generateQuestions({
-          examType: user.examType,
-          difficulty,
-          count,
-          askedQuestionIds,
-          subject: selectedSubject,
+      // Track user action
+      trackUserActivity(user.id, 'generate_questions', {
+        examType: user.examType,
+        difficulty
+      });
+      
+      // Generate 5 questions for premium, or limited questions for free users
+      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
+      
+      const generatedQuestions = await generateQuestions({
+        examType: user.examType,
+        difficulty: difficulty as any,
+        count,
+        askedQuestionIds // Pass the IDs of questions that have already been asked
+      });
+      
+      if (generatedQuestions.length === 0) {
+        toast({
+          title: 'No new questions available',
+          description: 'Try changing the difficulty or exam type to get new questions.',
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Store the new questions in the question store for admin access
+      generatedQuestions.forEach(question => {
+        // Only add if it doesn't already exist in customQuestions
+        if (!customQuestions.some(q => q.id === question.id)) {
+          useQuestionStore.getState().addQuestion(question);
+        }
+      });
+      
+      setQuestions(generatedQuestions);
+      
+      // Set the first question as current
+      if (generatedQuestions.length > 0) {
+        setCurrentQuestion(generatedQuestions[0]);
+        
+        // Update the last question time
+        setLastQuestionTime(new Date().getTime());
+        
+        toast({
+          title: 'Questions generated',
+          description: `${generatedQuestions.length} questions ready for practice.`,
         });
       } else {
-        // Mixed mode - generate questions with different difficulties
-        const { easy, medium, hard } = mixedDifficultySettings;
-        const totalQuestions = easy + medium + hard;
-
-        if (totalQuestions === 0) {
-          throw new Error('Please select at least one question for each difficulty level');
-        }
-
-        // Generate easy questions
-        const easyQuestions = easy > 0
-          ? await generateQuestions({
-              examType: user.examType,
-              difficulty: 'easy',
-              count: easy,
-              askedQuestionIds,
-              subject: selectedSubject,
-            })
-          : [];
-
-        // Generate medium questions
-        const mediumQuestions = medium > 0
-          ? await generateQuestions({
-              examType: user.examType,
-              difficulty: 'medium',
-              count: medium,
-              askedQuestionIds: [...askedQuestionIds, ...easyQuestions.map(q => q.id)],
-              subject: selectedSubject,
-            })
-          : [];
-
-        // Generate hard questions
-        const hardQuestions = hard > 0
-          ? await generateQuestions({
-              examType: user.examType,
-              difficulty: 'hard',
-              count: hard,
-              askedQuestionIds: [
-                ...askedQuestionIds,
-                ...easyQuestions.map(q => q.id),
-                ...mediumQuestions.map(q => q.id),
-              ],
-              subject: selectedSubject,
-            })
-          : [];
-
-        questions = [...easyQuestions, ...mediumQuestions, ...hardQuestions];
+        toast({
+          title: 'No questions generated',
+          description: 'Please try again with different parameters.',
+          variant: 'destructive'
+        });
       }
-
-      if (questions.length === 0) {
-        throw new Error('No questions were generated. Please try again.');
-      }
-
-      // Update question store
-      setQuestions(questions);
-      
-      // Set the current question
-      setCurrentQuestion(questions[0]);
-      
-      // Set last question time for cooldown
-      setLastQuestionTime(Date.now());
-      
-      // Track activity
-      trackUserActivity(user.id, 'generate_questions', {
-        count: questions.length,
-        difficulty: generationMode === 'standard' ? difficulty : 'mixed',
-        examType: user.examType,
-        subject: selectedSubject
-      });
-      
-      toast({
-        title: 'Questions Generated!',
-        description: `${questions.length} ${selectedSubject || ''} questions are ready for you.`,
-      });
-      
     } catch (error) {
       console.error('Error generating questions:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to generate questions');
-      
       toast({
-        title: 'Error Generating Questions',
-        description: error instanceof Error ? error.message : 'Failed to generate questions',
-        variant: 'destructive',
+        title: 'Error generating questions',
+        description: 'Please ensure your API key is configured correctly.',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  if (!apiKeyConfigured) {
+    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
+  }
+  
   return (
-    <>
-      <Card className="shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-0">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl text-gradient-primary flex items-center gap-2">
-            <Zap className="h-5 w-5 text-indigo-500" />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
+            <BrainCircuit className="w-5 h-5 text-indigo-500" />
             Generate Questions
           </CardTitle>
+          <CardDescription>
+            Customize your practice session
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="standard" value={generationMode} onValueChange={(value) => setGenerationMode(value as 'standard' | 'mixed')}>
-            <TabsList className="w-full mb-4">
-              <TabsTrigger value="standard" className="flex items-center gap-2">
-                <ListChecks className="h-4 w-4" />
-                Standard Mode
-              </TabsTrigger>
-              <TabsTrigger value="mixed" className="flex items-center gap-2">
-                <Shuffle className="h-4 w-4" />
-                Mixed Difficulty
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="standard" className="space-y-4">
-              <DifficultySelector 
-                selected={difficulty} 
-                onSelect={setDifficulty} 
-              />
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Number of Questions</span>
-                  <span className="text-sm bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded">
-                    {count}
-                  </span>
-                </div>
-                <Slider 
-                  min={1} 
-                  max={10} 
-                  step={1} 
-                  value={[count]} 
-                  onValueChange={(values) => setCount(values[0])}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="mixed" className="space-y-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Difficulty Mix</span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 text-xs" 
-                  onClick={() => setShowMixedSettings(true)}
-                >
-                  Configure
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-3 rounded-lg border",
-                  "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                )}>
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">Easy</span>
-                  <span className="text-2xl font-bold text-green-700 dark:text-green-300">
-                    {mixedDifficultySettings.easy}
-                  </span>
-                </div>
-                
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-3 rounded-lg border",
-                  "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
-                )}>
-                  <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">Medium</span>
-                  <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                    {mixedDifficultySettings.medium}
-                  </span>
-                </div>
-                
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-3 rounded-lg border",
-                  "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-                )}>
-                  <span className="text-sm font-semibold text-red-600 dark:text-red-400">Hard</span>
-                  <span className="text-2xl font-bold text-red-700 dark:text-red-300">
-                    {mixedDifficultySettings.hard}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                Total: {mixedDifficultySettings.easy + mixedDifficultySettings.medium + mixedDifficultySettings.hard} questions
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="space-y-4 mt-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <div className="text-sm font-medium">Subject Area (Optional)</div>
-              <Select 
-                value={selectedSubject || ''} 
-                onValueChange={(value) => setSelectedSubject(value ? value as Subject : null)}
+              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                <Flame className="w-4 h-4 text-indigo-500" />
+                <span>Difficulty Level</span>
+              </Label>
+              <RadioGroup 
+                defaultValue={difficulty} 
+                onValueChange={setDifficulty}
+                className="grid grid-cols-3 gap-3"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
-                  {subjectOptions.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <input
-                  id="timer-toggle"
-                  type="checkbox"
-                  checked={questionsWithTimer}
-                  onChange={toggleQuestionsWithTimer}
-                  className="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out"
-                />
-                <label htmlFor="timer-toggle" className="flex items-center cursor-pointer">
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span className="text-sm">Use Timer</span>
-                </label>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                {user && user.isPremium ? (
-                  <span className="flex items-center text-indigo-500">
-                    <ThumbsUp className="h-4 w-4 mr-1" />
-                    Premium User
-                  </span>
-                ) : (
-                  <span>
-                    {user?.monthlyQuestionsRemaining} questions remaining
-                  </span>
-                )}
-              </div>
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="easy" 
+                    id="easy" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="easy" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <ShieldCheck className="mb-1 h-5 w-5 text-emerald-500" />
+                    <span className="text-sm font-medium">Easy</span>
+                  </Label>
+                </div>
+                
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="medium" 
+                    id="medium" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="medium" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <Flame className="mb-1 h-5 w-5 text-amber-500" />
+                    <span className="text-sm font-medium">Medium</span>
+                  </Label>
+                </div>
+                
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="hard" 
+                    id="hard" 
+                    className="peer sr-only" 
+                  />
+                  <Label 
+                    htmlFor="hard" 
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <ShieldAlert className="mb-1 h-5 w-5 text-rose-500" />
+                    <span className="text-sm font-medium">Hard</span>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
           </div>
-          
-          {errorMessage && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-md text-sm">
-              {errorMessage}
-            </div>
-          )}
         </CardContent>
-        
         <CardFooter className="flex justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowApiKeyDialog(true)}
-            className="text-xs"
-          >
-            API Key
-          </Button>
-          
-          <Button
+          <Button 
+            variant="default"
             onClick={handleGenerateQuestions}
-            disabled={isLoading || cooldownRemaining !== null}
-            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl flex gap-2"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl"
           >
             {isLoading ? (
               <>
-                <LoadingSpinner className="h-4 w-4" />
-                <span>Generating...</span>
-              </>
-            ) : cooldownRemaining !== null ? (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                <span>Wait {formatCooldownTime(cooldownRemaining)}</span>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
               </>
             ) : (
               <>
-                <BookOpen className="h-4 w-4" />
-                <span>Generate Questions</span>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Questions
               </>
             )}
           </Button>
         </CardFooter>
       </Card>
-      
-      {/* API Key Dialog */}
-      <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enter Gemini API Key</DialogTitle>
-            <DialogDescription>
-              An API key is required to generate questions. Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 hover:underline">Google AI Studio</a>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input 
-                id="apiKey" 
-                type="password" 
-                value={apiKey} 
-                onChange={(e) => setApiKey(e.target.value)} 
-                placeholder="AIzaSyA1234567890abcdefghijklmnopqrstuvwxyz"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" onClick={() => {
-              if (apiKey) {
-                localStorage.setItem('GEMINI_API_KEY', apiKey);
-                setShowApiKeyDialog(false);
-                toast({
-                  title: "API Key Saved",
-                  description: "Your API key has been saved for this session."
-                });
-              }
-            }}>
-              Save API Key
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Mixed Difficulty Settings Dialog */}
-      <Dialog open={showMixedSettings} onOpenChange={setShowMixedSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Configure Mixed Difficulty</DialogTitle>
-            <DialogDescription>
-              Adjust the number of questions for each difficulty level.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-green-600">Easy Questions</Label>
-              <div className="flex items-center gap-4">
-                <Slider 
-                  min={0} 
-                  max={10} 
-                  step={1} 
-                  value={[mixedDifficultySettings.easy]} 
-                  onValueChange={(values) => setMixedDifficultySettings({
-                    ...mixedDifficultySettings,
-                    easy: values[0]
-                  })}
-                  className="flex-1"
-                />
-                <span className="text-sm font-medium w-8 text-center">
-                  {mixedDifficultySettings.easy}
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-amber-600">Medium Questions</Label>
-              <div className="flex items-center gap-4">
-                <Slider 
-                  min={0} 
-                  max={10} 
-                  step={1} 
-                  value={[mixedDifficultySettings.medium]} 
-                  onValueChange={(values) => setMixedDifficultySettings({
-                    ...mixedDifficultySettings,
-                    medium: values[0]
-                  })}
-                  className="flex-1"
-                />
-                <span className="text-sm font-medium w-8 text-center">
-                  {mixedDifficultySettings.medium}
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-red-600">Hard Questions</Label>
-              <div className="flex items-center gap-4">
-                <Slider 
-                  min={0} 
-                  max={10} 
-                  step={1} 
-                  value={[mixedDifficultySettings.hard]} 
-                  onValueChange={(values) => setMixedDifficultySettings({
-                    ...mixedDifficultySettings,
-                    hard: values[0]
-                  })}
-                  className="flex-1"
-                />
-                <span className="text-sm font-medium w-8 text-center">
-                  {mixedDifficultySettings.hard}
-                </span>
-              </div>
-            </div>
-            
-            <div className="pt-2 border-t">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total questions:</span>
-                <span className="font-bold">
-                  {mixedDifficultySettings.easy + mixedDifficultySettings.medium + mixedDifficultySettings.hard}
-                </span>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowMixedSettings(false)}>
-              Save Settings
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </motion.div>
   );
 };
 

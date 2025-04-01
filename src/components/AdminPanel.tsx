@@ -35,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getGeminiApiKey } from '@/lib/env';
 import { getSystemStats } from '@/services/api';
 import { useQuestionStore } from '@/services/questionStore';
-import { Question, QuestionDifficulty, Subject } from '@/types';
+import { Question, QuestionDifficulty } from '@/types';
 
 const AdminPanel = () => {
   const { toast } = useToast();
@@ -64,9 +64,7 @@ const AdminPanel = () => {
     correctOption: 0,
     explanation: '',
     category: '',
-    difficulty: 'medium' as QuestionDifficulty,
-    subject: 'General Knowledge' as Subject,
-    timeLimit: 90
+    difficulty: 'medium'
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -177,18 +175,14 @@ const AdminPanel = () => {
       return;
     }
     
-    const questionToAdd: Omit<Question, 'id'> = {
+    addCustomQuestion({
       text: newQuestion.text || '',
       options: newQuestion.options as string[],
       correctOption: newQuestion.correctOption || 0,
       explanation: newQuestion.explanation || '',
       category: newQuestion.category || 'General',
-      difficulty: (newQuestion.difficulty as QuestionDifficulty) || 'medium',
-      subject: (newQuestion.subject as Subject) || 'General Knowledge',
-      timeLimit: newQuestion.timeLimit || 90
-    };
-    
-    addCustomQuestion(questionToAdd);
+      difficulty: (newQuestion.difficulty as QuestionDifficulty) || 'medium'
+    });
     
     setNewQuestion({
       text: '',
@@ -196,9 +190,7 @@ const AdminPanel = () => {
       correctOption: 0,
       explanation: '',
       category: '',
-      difficulty: 'medium' as QuestionDifficulty,
-      subject: 'General Knowledge' as Subject,
-      timeLimit: 90
+      difficulty: 'medium'
     });
     
     setShowAddDialog(false);
@@ -741,7 +733,7 @@ const AdminPanel = () => {
                 <Label htmlFor="difficulty">Difficulty</Label>
                 <Select 
                   value={newQuestion.difficulty || 'medium'}
-                  onValueChange={(value: QuestionDifficulty) => setNewQuestion({...newQuestion, difficulty: value})}
+                  onValueChange={(value) => setNewQuestion({...newQuestion, difficulty: value})}
                 >
                   <SelectTrigger id="difficulty">
                     <SelectValue placeholder="Select difficulty" />
@@ -752,43 +744,6 @@ const AdminPanel = () => {
                     <SelectItem value="hard">Hard</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Select 
-                  value={newQuestion.subject || 'General Knowledge'}
-                  onValueChange={(value: Subject) => setNewQuestion({...newQuestion, subject: value})}
-                >
-                  <SelectTrigger id="subject">
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Polity">Polity</SelectItem>
-                    <SelectItem value="Economics">Economics</SelectItem>
-                    <SelectItem value="Art & Culture">Art & Culture</SelectItem>
-                    <SelectItem value="History">History</SelectItem>
-                    <SelectItem value="Geography">Geography</SelectItem>
-                    <SelectItem value="Science">Science</SelectItem>
-                    <SelectItem value="Environment">Environment</SelectItem>
-                    <SelectItem value="Current Affairs">Current Affairs</SelectItem>
-                    <SelectItem value="English Language">English Language</SelectItem>
-                    <SelectItem value="General Knowledge">General Knowledge</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="timeLimit">Time Limit (seconds)</Label>
-                <Input 
-                  id="timeLimit" 
-                  type="number" 
-                  placeholder="Time in seconds"
-                  value={newQuestion.timeLimit || 90}
-                  onChange={(e) => setNewQuestion({...newQuestion, timeLimit: Number(e.target.value)})}
-                />
               </div>
             </div>
           </div>
@@ -886,7 +841,7 @@ const AdminPanel = () => {
                   <Label htmlFor="editDifficulty">Difficulty</Label>
                   <Select 
                     value={editingQuestion.difficulty}
-                    onValueChange={(value: QuestionDifficulty) => setEditingQuestion({...editingQuestion, difficulty: value})}
+                    onValueChange={(value: any) => setEditingQuestion({...editingQuestion, difficulty: value})}
                   >
                     <SelectTrigger id="editDifficulty">
                       <SelectValue placeholder="Select difficulty" />
@@ -897,42 +852,6 @@ const AdminPanel = () => {
                       <SelectItem value="hard">Hard</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="editSubject">Subject</Label>
-                  <Select 
-                    value={editingQuestion.subject}
-                    onValueChange={(value: Subject) => setEditingQuestion({...editingQuestion, subject: value})}
-                  >
-                    <SelectTrigger id="editSubject">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Polity">Polity</SelectItem>
-                      <SelectItem value="Economics">Economics</SelectItem>
-                      <SelectItem value="Art & Culture">Art & Culture</SelectItem>
-                      <SelectItem value="History">History</SelectItem>
-                      <SelectItem value="Geography">Geography</SelectItem>
-                      <SelectItem value="Science">Science</SelectItem>
-                      <SelectItem value="Environment">Environment</SelectItem>
-                      <SelectItem value="Current Affairs">Current Affairs</SelectItem>
-                      <SelectItem value="English Language">English Language</SelectItem>
-                      <SelectItem value="General Knowledge">General Knowledge</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="editTimeLimit">Time Limit (seconds)</Label>
-                  <Input 
-                    id="editTimeLimit" 
-                    type="number" 
-                    value={editingQuestion.timeLimit || 90}
-                    onChange={(e) => setEditingQuestion({...editingQuestion, timeLimit: Number(e.target.value)})}
-                  />
                 </div>
               </div>
             </div>

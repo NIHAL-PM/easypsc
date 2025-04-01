@@ -14,8 +14,7 @@ import QuestionGenerator from '@/components/QuestionGenerator';
 import AnimatedLogo from '@/components/AnimatedLogo';
 import ProfileCard from '@/components/ProfileCard';
 import ChatMode from '@/components/ChatMode';
-import QuestionHistory from '@/components/QuestionHistory';
-import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BarChart2, Heart } from 'lucide-react';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen } from 'lucide-react';
 import { ExamType } from '@/types';
 
 const Index = () => {
@@ -25,7 +24,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
-  const [activeTab, setActiveTab] = useState<'questions' | 'chat' | 'progress'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'chat'>('questions');
   
   // Validation for form
   const [isNameValid, setIsNameValid] = useState(true);
@@ -213,81 +212,36 @@ const Index = () => {
         <div className="container mx-auto py-6 px-4">
           <AnimatedLogo />
           
-          <div className="mt-6 flex flex-col md:flex-row">
-            {/* Sidebar */}
-            <div className="md:w-1/4 pr-0 md:pr-4 mb-4 md:mb-0">
-              <div className="sticky top-4 space-y-4">
-                <ProfileCard />
-                
-                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-                  <CardContent className="p-0">
-                    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'questions' | 'chat' | 'progress')}>
-                      <TabsList className="grid grid-cols-1 h-auto p-1">
-                        <TabsTrigger 
-                          value="questions" 
-                          className="flex items-center justify-start gap-2 px-4 py-3 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Practice Questions
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="progress" 
-                          className="flex items-center justify-start gap-2 px-4 py-3 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
-                        >
-                          <BarChart2 className="h-4 w-4" />
-                          Progress Summary
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="chat" 
-                          className="flex items-center justify-start gap-2 px-4 py-3 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Chat with AI
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-                
-                {/* Hearts display */}
-                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-rose-500" />
-                        Your Hearts
-                      </h3>
-                      <span className="flex items-center gap-1 px-3 py-1 bg-rose-50 dark:bg-rose-950/20 rounded-full text-rose-600 dark:text-rose-400 font-medium">
-                        <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
-                        {user.hearts || 0}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Earn hearts by answering questions correctly. Hearts represent your learning achievements!
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <ProfileCard />
             </div>
             
-            {/* Main content area */}
-            <div className="md:w-3/4">
-              <Tabs value={activeTab} className="hidden">
-                <TabsContent value="questions">
-                  {!currentQuestion ? <QuestionGenerator /> : <QuestionCard />}
+            <div className="md:col-span-2 space-y-6">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat')} className="w-full">
+                <TabsList className="grid grid-cols-2 mb-4">
+                  <TabsTrigger value="questions" className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Practice Questions
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Chat with AI
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="questions" className="space-y-4">
+                  {!currentQuestion ? (
+                    <QuestionGenerator />
+                  ) : (
+                    <QuestionCard />
+                  )}
                 </TabsContent>
-                <TabsContent value="progress">
-                  <QuestionHistory />
-                </TabsContent>
+                
                 <TabsContent value="chat">
                   <ChatMode />
                 </TabsContent>
               </Tabs>
-              
-              {/* Render content based on activeTab - this is a fallback to ensure content is always visible */}
-              {activeTab === 'questions' && (!currentQuestion ? <QuestionGenerator /> : <QuestionCard />)}
-              {activeTab === 'progress' && <QuestionHistory />}
-              {activeTab === 'chat' && <ChatMode />}
             </div>
           </div>
         </div>
