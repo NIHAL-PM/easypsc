@@ -4,6 +4,12 @@ import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { AppState, ExamType, Question, User, UserStats } from '@/types';
 
+// Helper function to safely handle Object.entries for potentially null/undefined objects
+const safeObjectEntries = (obj: Record<string, number> | null | undefined): [string, number][] => {
+  if (!obj) return [];
+  return Object.entries(obj);
+};
+
 type AppStoreWithActions = AppState & {
   login: (name: string, email: string, examType: ExamType) => void;
   setUser: (user: User) => void;
@@ -19,12 +25,6 @@ type AppStoreWithActions = AppState & {
   getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
   setLastQuestionTime: (time: number) => void;
-};
-
-// Helper function to safely handle Object.entries for potentially null/undefined objects
-const safeObjectEntries = (obj: Record<string, number> | null | undefined): [string, number][] => {
-  if (!obj) return [];
-  return Object.entries(obj);
 };
 
 export const useAppStore = create<AppStoreWithActions>()(

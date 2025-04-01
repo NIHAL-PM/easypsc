@@ -14,8 +14,11 @@ import QuestionGenerator from '@/components/QuestionGenerator';
 import AnimatedLogo from '@/components/AnimatedLogo';
 import ProfileCard from '@/components/ProfileCard';
 import ChatMode from '@/components/ChatMode';
-import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen } from 'lucide-react';
+import ChatRoom from '@/components/ChatRoom';
+import NewsFeed from '@/components/NewsFeed';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, UsersRound, Newspaper } from 'lucide-react';
 import { ExamType } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, login, currentQuestion } = useAppStore();
@@ -24,7 +27,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
-  const [activeTab, setActiveTab] = useState<'questions' | 'chat'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'chat' | 'community' | 'news'>('questions');
   
   // Validation for form
   const [isNameValid, setIsNameValid] = useState(true);
@@ -218,24 +221,40 @@ const Index = () => {
             </div>
             
             <div className="md:col-span-2 space-y-6">
-              <Tabs defaultValue={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat')} className="w-full">
-                <TabsList className="grid grid-cols-2 mb-4">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'community' | 'news')} className="w-full">
+                <TabsList className="grid grid-cols-4 mb-4">
                   <TabsTrigger value="questions" className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
-                    Practice Questions
+                    Practice
                   </TabsTrigger>
                   <TabsTrigger value="chat" className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
-                    Chat with AI
+                    AI Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="community" className="flex items-center gap-2">
+                    <UsersRound className="h-4 w-4" />
+                    Community
+                  </TabsTrigger>
+                  <TabsTrigger value="news" className="flex items-center gap-2">
+                    <Newspaper className="h-4 w-4" />
+                    News
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="questions" className="space-y-4">
+                <TabsContent value="questions" className="space-y-4 m-0">
                   {!currentQuestion ? <QuestionGenerator /> : <QuestionCard />}
                 </TabsContent>
                 
-                <TabsContent value="chat">
+                <TabsContent value="chat" className="m-0">
                   <ChatMode />
+                </TabsContent>
+
+                <TabsContent value="community" className="m-0">
+                  <ChatRoom examType={user.examType} />
+                </TabsContent>
+
+                <TabsContent value="news" className="m-0">
+                  <NewsFeed />
                 </TabsContent>
               </Tabs>
             </div>
