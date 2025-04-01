@@ -82,6 +82,20 @@ const Index = () => {
     validateEmail(`${emailPrefix}@${domain}`);
   };
   
+  // Render the appropriate content based on activeTab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'questions':
+        return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
+      case 'progress':
+        return <QuestionHistory />;
+      case 'chat':
+        return <ChatMode />;
+      default:
+        return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
       {!user ? (
@@ -221,7 +235,8 @@ const Index = () => {
                 
                 <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
                   <CardContent className="p-0">
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'progress')} className="w-full" orientation="vertical">
+                    {/* Fix: Wrap TabsList and TabsContent within the same Tabs component */}
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'progress')} className="w-full">
                       <TabsList className="grid grid-cols-1 h-auto p-1">
                         <TabsTrigger 
                           value="questions" 
@@ -259,7 +274,7 @@ const Index = () => {
                       </h3>
                       <span className="flex items-center gap-1 px-3 py-1 bg-rose-50 dark:bg-rose-950/20 rounded-full text-rose-600 dark:text-rose-400 font-medium">
                         <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
-                        {user.hearts}
+                        {user.hearts || 0}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
@@ -270,23 +285,9 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Main content area */}
+            {/* Main content area - Fix: Remove TabsContent and use renderTabContent instead */}
             <div className="md:w-3/4">
-              <TabsContent value="questions" className="mt-0 space-y-4">
-                {!currentQuestion ? (
-                  <QuestionGenerator />
-                ) : (
-                  <QuestionCard />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="progress" className="mt-0 space-y-4">
-                <QuestionHistory />
-              </TabsContent>
-              
-              <TabsContent value="chat" className="mt-0">
-                <ChatMode />
-              </TabsContent>
+              {renderTabContent()}
             </div>
           </div>
         </div>

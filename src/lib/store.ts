@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -323,20 +324,21 @@ export const useAppStore = create<AppStoreWithActions>()(
         }
         
         // Calculate weak and strong categories
-        const subjectEntries = Object.entries(user.subjectPerformance);
-        const activeSubjects = subjectEntries.filter(([_, stats]) => stats.total > 0);
+        // FIX: Ensure that subjectPerformance exists before using Object.entries
+        const subjectEntries = user.subjectPerformance ? Object.entries(user.subjectPerformance) : [];
+        const activeSubjects = subjectEntries.filter(([_, stats]) => stats && stats.total > 0);
         
         // Sort by accuracy
         const sortedSubjects = [...activeSubjects].sort((a, b) => {
-          const accuracyA = a[1].correct / a[1].total;
-          const accuracyB = b[1].correct / b[1].total;
+          const accuracyA = a[1] && a[1].total > 0 ? a[1].correct / a[1].total : 0;
+          const accuracyB = b[1] && b[1].total > 0 ? b[1].correct / b[1].total : 0;
           return accuracyA - accuracyB; // Ascending for weak categories
         });
         
         const weakCategories = sortedSubjects.slice(0, 3).map(([subject]) => subject);
         const strongCategories = [...sortedSubjects].sort((a, b) => {
-          const accuracyA = a[1].correct / a[1].total;
-          const accuracyB = b[1].correct / b[1].total;
+          const accuracyA = a[1] && a[1].total > 0 ? a[1].correct / a[1].total : 0;
+          const accuracyB = b[1] && b[1].total > 0 ? b[1].correct / b[1].total : 0;
           return accuracyB - accuracyA; // Descending for strong categories
         }).slice(0, 3).map(([subject]) => subject);
         
@@ -357,19 +359,33 @@ export const useAppStore = create<AppStoreWithActions>()(
             : 0
         };
         
+        // Ensure that subjectPerformance exists
+        const subjectPerformance = user.subjectPerformance || {
+          'Polity': { correct: 0, total: 0, avgTime: 0 },
+          'Economics': { correct: 0, total: 0, avgTime: 0 },
+          'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
+          'History': { correct: 0, total: 0, avgTime: 0 },
+          'Geography': { correct: 0, total: 0, avgTime: 0 },
+          'Science': { correct: 0, total: 0, avgTime: 0 },
+          'Environment': { correct: 0, total: 0, avgTime: 0 },
+          'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
+          'English Language': { correct: 0, total: 0, avgTime: 0 },
+          'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
+        };
+        
         return {
-          totalQuestions: user.questionsAnswered,
-          correctAnswers: user.questionsCorrect,
+          totalQuestions: user.questionsAnswered || 0,
+          correctAnswers: user.questionsCorrect || 0,
           accuracyPercentage: user.questionsAnswered > 0 
             ? (user.questionsCorrect / user.questionsAnswered) * 100 
             : 0,
           weakCategories,
           strongCategories,
-          streakDays: user.currentStreak,
-          hearts: user.hearts,
-          proficiencyLevel: user.proficiencyLevel,
+          streakDays: user.currentStreak || 0,
+          hearts: user.hearts || 0,
+          proficiencyLevel: user.proficiencyLevel || 'beginner',
           examTypePerformance,
-          subjectPerformance: user.subjectPerformance
+          subjectPerformance
         };
       },
       
