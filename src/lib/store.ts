@@ -21,6 +21,12 @@ type AppStoreWithActions = AppState & {
   setLastQuestionTime: (time: number) => void;
 };
 
+// Helper function to safely handle Object.entries for potentially null/undefined objects
+const safeObjectEntries = (obj: Record<string, number> | null | undefined): [string, number][] => {
+  if (!obj) return [];
+  return Object.entries(obj);
+};
+
 export const useAppStore = create<AppStoreWithActions>()(
   persist(
     (set, get) => ({

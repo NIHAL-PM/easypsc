@@ -81,6 +81,15 @@ const Index = () => {
     validateEmail(`${emailPrefix}@${domain}`);
   };
   
+  // Helper function to render the active tab content
+  const renderTabContent = () => {
+    if (activeTab === 'questions') {
+      return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
+    } else {
+      return <ChatMode />;
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
       {!user ? (
@@ -218,7 +227,7 @@ const Index = () => {
             </div>
             
             <div className="md:col-span-2 space-y-6">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat')} className="w-full">
+              <Tabs defaultValue={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat')} className="w-full">
                 <TabsList className="grid grid-cols-2 mb-4">
                   <TabsTrigger value="questions" className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
@@ -231,11 +240,7 @@ const Index = () => {
                 </TabsList>
                 
                 <TabsContent value="questions" className="space-y-4">
-                  {!currentQuestion ? (
-                    <QuestionGenerator />
-                  ) : (
-                    <QuestionCard />
-                  )}
+                  {!currentQuestion ? <QuestionGenerator /> : <QuestionCard />}
                 </TabsContent>
                 
                 <TabsContent value="chat">

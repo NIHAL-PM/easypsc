@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,8 +41,9 @@ const UserSetup = () => {
       questionsCorrect: 0,
       isPremium: false,
       monthlyQuestionsRemaining: 10, // Free tier gets 10 questions
-      currentStreak: 0, // Add missing property
-      lastActive: null // Add missing property
+      currentStreak: 0,
+      lastActive: new Date(), // Add current date
+      lastQuestionTime: null // Add missing property
     };
     
     setUser(newUser);
