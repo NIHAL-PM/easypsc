@@ -82,20 +82,6 @@ const Index = () => {
     validateEmail(`${emailPrefix}@${domain}`);
   };
   
-  // Render the appropriate content based on activeTab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'questions':
-        return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
-      case 'progress':
-        return <QuestionHistory />;
-      case 'chat':
-        return <ChatMode />;
-      default:
-        return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
-    }
-  };
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
       {!user ? (
@@ -235,11 +221,7 @@ const Index = () => {
                 
                 <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
                   <CardContent className="p-0">
-                    {/* Fix: Properly implement Tabs component */}
-                    <Tabs 
-                      value={activeTab} 
-                      onValueChange={(value) => setActiveTab(value as 'questions' | 'chat' | 'progress')}
-                    >
+                    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'questions' | 'chat' | 'progress')}>
                       <TabsList className="grid grid-cols-1 h-auto p-1">
                         <TabsTrigger 
                           value="questions" 
@@ -288,9 +270,24 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Main content area - Use renderTabContent instead of TabsContent */}
+            {/* Main content area */}
             <div className="md:w-3/4">
-              {renderTabContent()}
+              <Tabs value={activeTab} className="hidden">
+                <TabsContent value="questions">
+                  {!currentQuestion ? <QuestionGenerator /> : <QuestionCard />}
+                </TabsContent>
+                <TabsContent value="progress">
+                  <QuestionHistory />
+                </TabsContent>
+                <TabsContent value="chat">
+                  <ChatMode />
+                </TabsContent>
+              </Tabs>
+              
+              {/* Render content based on activeTab - this is a fallback to ensure content is always visible */}
+              {activeTab === 'questions' && (!currentQuestion ? <QuestionGenerator /> : <QuestionCard />)}
+              {activeTab === 'progress' && <QuestionHistory />}
+              {activeTab === 'chat' && <ChatMode />}
             </div>
           </div>
         </div>

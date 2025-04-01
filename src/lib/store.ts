@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -57,6 +56,20 @@ const getDefaultTimeLimit = (difficulty: QuestionDifficulty): number => {
   }
 };
 
+// Default subject performance record
+const getDefaultSubjectPerformance = (): Record<Subject, { correct: number; total: number; avgTime: number }> => ({
+  'Polity': { correct: 0, total: 0, avgTime: 0 },
+  'Economics': { correct: 0, total: 0, avgTime: 0 },
+  'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
+  'History': { correct: 0, total: 0, avgTime: 0 },
+  'Geography': { correct: 0, total: 0, avgTime: 0 },
+  'Science': { correct: 0, total: 0, avgTime: 0 },
+  'Environment': { correct: 0, total: 0, avgTime: 0 },
+  'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
+  'English Language': { correct: 0, total: 0, avgTime: 0 },
+  'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
+});
+
 export const useAppStore = create<AppStoreWithActions>()(
   persist(
     (set, get) => ({
@@ -101,18 +114,7 @@ export const useAppStore = create<AppStoreWithActions>()(
         }
         
         // Initialize empty subject performance record
-        const subjectPerformance: Record<Subject, { correct: number; total: number; avgTime: number }> = {
-          'Polity': { correct: 0, total: 0, avgTime: 0 },
-          'Economics': { correct: 0, total: 0, avgTime: 0 },
-          'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
-          'History': { correct: 0, total: 0, avgTime: 0 },
-          'Geography': { correct: 0, total: 0, avgTime: 0 },
-          'Science': { correct: 0, total: 0, avgTime: 0 },
-          'Environment': { correct: 0, total: 0, avgTime: 0 },
-          'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
-          'English Language': { correct: 0, total: 0, avgTime: 0 },
-          'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
-        };
+        const subjectPerformance = getDefaultSubjectPerformance();
         
         // Create new user
         const newUser: User = {
@@ -217,13 +219,19 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         // Update subject performance
         const subject = currentQuestion.subject || 'General Knowledge';
-        const currentSubjectStats = user.subjectPerformance[subject] || { correct: 0, total: 0, avgTime: 0 };
+        const currentSubjectStats = user.subjectPerformance?.[subject] || { correct: 0, total: 0, avgTime: 0 };
         const updatedSubjectStats = {
           correct: isCorrect ? currentSubjectStats.correct + 1 : currentSubjectStats.correct,
           total: currentSubjectStats.total + 1,
           avgTime: currentSubjectStats.total === 0 
             ? timeSpent
             : Math.round((currentSubjectStats.avgTime * currentSubjectStats.total + timeSpent) / (currentSubjectStats.total + 1))
+        };
+        
+        // Ensure subjectPerformance exists
+        const updatedSubjectPerformance = {
+          ...(user.subjectPerformance || getDefaultSubjectPerformance()),
+          [subject]: updatedSubjectStats
         };
         
         // Update user stats
@@ -235,11 +243,8 @@ export const useAppStore = create<AppStoreWithActions>()(
             ? user.monthlyQuestionsRemaining 
             : Math.max(0, user.monthlyQuestionsRemaining - 1),
           lastActive: new Date(),
-          subjectPerformance: {
-            ...user.subjectPerformance,
-            [subject]: updatedSubjectStats
-          },
-          questionHistory: [historyEntry, ...user.questionHistory || []]
+          subjectPerformance: updatedSubjectPerformance,
+          questionHistory: [historyEntry, ...(user.questionHistory || [])]
         };
         
         // Update proficiency level based on performance
@@ -308,40 +313,16 @@ export const useAppStore = create<AppStoreWithActions>()(
               'SSC': { correct: 0, total: 0, accuracy: 0 },
               'Banking': { correct: 0, total: 0, accuracy: 0 }
             },
-            subjectPerformance: {
-              'Polity': { correct: 0, total: 0, avgTime: 0 },
-              'Economics': { correct: 0, total: 0, avgTime: 0 },
-              'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
-              'History': { correct: 0, total: 0, avgTime: 0 },
-              'Geography': { correct: 0, total: 0, avgTime: 0 },
-              'Science': { correct: 0, total: 0, avgTime: 0 },
-              'Environment': { correct: 0, total: 0, avgTime: 0 },
-              'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
-              'English Language': { correct: 0, total: 0, avgTime: 0 },
-              'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
-            }
+            subjectPerformance: getDefaultSubjectPerformance()
           };
         }
         
         // Initialize default values for empty or missing performance data
-        const defaultSubjectPerformance = {
-          'Polity': { correct: 0, total: 0, avgTime: 0 },
-          'Economics': { correct: 0, total: 0, avgTime: 0 },
-          'Art & Culture': { correct: 0, total: 0, avgTime: 0 },
-          'History': { correct: 0, total: 0, avgTime: 0 },
-          'Geography': { correct: 0, total: 0, avgTime: 0 },
-          'Science': { correct: 0, total: 0, avgTime: 0 },
-          'Environment': { correct: 0, total: 0, avgTime: 0 },
-          'Current Affairs': { correct: 0, total: 0, avgTime: 0 },
-          'English Language': { correct: 0, total: 0, avgTime: 0 },
-          'General Knowledge': { correct: 0, total: 0, avgTime: 0 }
-        };
-        
-        const userSubjectPerformance = user.subjectPerformance || defaultSubjectPerformance;
+        const userSubjectPerformance = user.subjectPerformance || getDefaultSubjectPerformance();
         
         // Calculate weak and strong categories
         // Ensure subjectPerformance exists and handle empty objects
-        const subjectEntries = Object.entries(userSubjectPerformance || {});
+        const subjectEntries = Object.entries(userSubjectPerformance);
         const activeSubjects = subjectEntries.filter(([_, stats]) => stats && stats.total > 0);
         
         // Sort by accuracy
