@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -841,7 +842,7 @@ const AdminPanel = () => {
                   <Label htmlFor="editDifficulty">Difficulty</Label>
                   <Select 
                     value={editingQuestion.difficulty}
-                    onValueChange={(value: any) => setEditingQuestion({...editingQuestion, difficulty: value})}
+                    onValueChange={(value: any) => setEditingQuestion({...editingQuestion, difficulty: value as QuestionDifficulty})}
                   >
                     <SelectTrigger id="editDifficulty">
                       <SelectValue placeholder="Select difficulty" />
@@ -858,4 +859,17 @@ const AdminPanel = () => {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdminPanel;

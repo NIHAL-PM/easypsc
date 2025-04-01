@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -78,15 +79,6 @@ const Index = () => {
     setEmail(`${emailPrefix}@${domain}`);
     validateName(randomName);
     validateEmail(`${emailPrefix}@${domain}`);
-  };
-  
-  // Helper function to render the active tab content
-  const renderTabContent = () => {
-    if (activeTab === 'questions') {
-      return !currentQuestion ? <QuestionGenerator /> : <QuestionCard />;
-    } else {
-      return <ChatMode />;
-    }
   };
   
   return (
