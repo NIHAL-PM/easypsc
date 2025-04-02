@@ -1,23 +1,23 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle, KeyRound, Users, MessageSquare, BarChart, LockIcon } from 'lucide-react';
+import { AlertTriangle, CheckCircle, KeyRound, Users, MessageSquare, BarChart, LockIcon, Settings, Newspaper } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import ApiKeyManager from './ApiKeyManager';
 import { getSystemStats } from '@/services/api';
 import { useAppStore } from '@/lib/store';
 import { supabase } from "@/integrations/supabase/client";
+import { initializeDefaultApiKeys } from '@/lib/api-key';
 
 const AdminPanel = () => {
   const { user } = useAppStore();
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,6 +49,17 @@ const AdminPanel = () => {
     
     checkAdminStatus();
   }, [user]);
+
+  useEffect(() => {
+    // Initialize default API keys when the admin panel is loaded
+    const setupApiKeys = async () => {
+      if (isAdminUser) {
+        await initializeDefaultApiKeys();
+      }
+    };
+
+    setupApiKeys();
+  }, [isAdminUser]);
 
   const handleAdminLogin = () => {
     // Hardcoded admin credentials for demonstration
@@ -145,6 +156,14 @@ const AdminPanel = () => {
             <MessageSquare className="h-4 w-4" />
             Content Management
           </TabsTrigger>
+          <TabsTrigger value="news" className="flex items-center gap-2">
+            <Newspaper className="h-4 w-4" />
+            News Settings
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Site Settings
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="system" className="space-y-4">
           <SystemStats />
@@ -158,12 +177,17 @@ const AdminPanel = () => {
         <TabsContent value="content" className="space-y-4">
           <ContentManagement />
         </TabsContent>
+        <TabsContent value="news" className="space-y-4">
+          <NewsSettings />
+        </TabsContent>
+        <TabsContent value="settings" className="space-y-4">
+          <SiteSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );
 };
 
-// Fix the incorrect Promise handling in the SystemStats component
 const SystemStats = () => {
   const [stats, setStats] = useState<{
     totalUsers: number;
@@ -260,7 +284,6 @@ const SystemStats = () => {
   );
 };
 
-// User Management component
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -331,7 +354,6 @@ const UserManagement = () => {
   );
 };
 
-// Content Management component
 const ContentManagement = () => {
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -397,6 +419,215 @@ const ContentManagement = () => {
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const NewsSettings = () => {
+  const [categories, setCategories] = useState([
+    { id: 'general', name: 'General' },
+    { id: 'business', name: 'Business' },
+    { id: 'technology', name: 'Technology' },
+    { id: 'health', name: 'Health' },
+    { id: 'science', name: 'Science' },
+    { id: 'sports', name: 'Sports' },
+  ]);
+  const [selectedCategory, setSelectedCategory] = useState('general');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleClearNewsCache = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.functions.invoke('news-feed', {
+        body: {
+          action: 'clear-cache',
+          category: selectedCategory
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to clear news cache. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Success",
+        description: "News cache cleared successfully!",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error clearing news cache:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Newspaper className="h-5 w-5" />
+          News Feed Settings
+        </CardTitle>
+        <CardDescription>
+          Manage news feed settings and cache
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="newsCategory">News Category</Label>
+          <select 
+            id="newsCategory"
+            className="w-full p-2 border border-gray-300 rounded"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <Button 
+          onClick={handleClearNewsCache}
+          disabled={isLoading}
+          className="w-full"
+        >
+          {isLoading ? "Processing..." : "Clear News Cache"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+const SiteSettings = () => {
+  const [defaultLanguage, setDefaultLanguage] = useState('english');
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+  const languages = [
+    { id: 'english', name: 'English' },
+    { id: 'hindi', name: 'Hindi' },
+    { id: 'tamil', name: 'Tamil' },
+    { id: 'telugu', name: 'Telugu' },
+    { id: 'marathi', name: 'Marathi' },
+    { id: 'bengali', name: 'Bengali' },
+    { id: 'gujarati', name: 'Gujarati' },
+    { id: 'kannada', name: 'Kannada' },
+    { id: 'malayalam', name: 'Malayalam' },
+    { id: 'punjabi', name: 'Punjabi' },
+    { id: 'urdu', name: 'Urdu' }
+  ];
+
+  useEffect(() => {
+    const getSettings = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-settings', {
+          body: {
+            action: 'get',
+            key: 'DEFAULT_LANGUAGE'
+          }
+        });
+        
+        if (!error && data?.value) {
+          setDefaultLanguage(data.value);
+        }
+      } catch (error) {
+        console.error('Error fetching site settings:', error);
+      }
+    };
+    
+    getSettings();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true);
+      
+      const { error } = await supabase.functions.invoke('admin-settings', {
+        body: {
+          action: 'set',
+          key: 'DEFAULT_LANGUAGE',
+          value: defaultLanguage
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save settings. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Success",
+        description: "Settings saved successfully!",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error saving site settings:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Site Settings
+        </CardTitle>
+        <CardDescription>
+          Configure global application settings
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="defaultLanguage">Default Language</Label>
+          <select 
+            id="defaultLanguage"
+            className="w-full p-2 border border-gray-300 rounded"
+            value={defaultLanguage}
+            onChange={(e) => setDefaultLanguage(e.target.value)}
+          >
+            {languages.map(lang => (
+              <option key={lang.id} value={lang.id}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Default language for new users and content
+          </p>
+        </div>
+        
+        <Button 
+          onClick={handleSaveSettings}
+          disabled={isSaving}
+          className="w-full"
+        >
+          {isSaving ? "Saving..." : "Save Settings"}
+        </Button>
       </CardContent>
     </Card>
   );

@@ -95,3 +95,20 @@ export const ensureSettingsTableExists = async (): Promise<boolean> => {
     return false;
   }
 };
+
+/**
+ * Initialize default API keys
+ */
+export const initializeDefaultApiKeys = async (): Promise<void> => {
+  // Check if Gemini API key exists, if not, set the default one
+  const geminiKey = await getApiKey('GEMINI_API_KEY');
+  if (!geminiKey) {
+    await saveApiKey('GEMINI_API_KEY', 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik');
+  }
+  
+  // Check if News API key exists, if not, set the default one
+  const newsApiKey = await getApiKey('NEWS_API_KEY');
+  if (!newsApiKey) {
+    await saveApiKey('NEWS_API_KEY', '7c64a4f4675a425ebe9fc4895fc6e273');
+  }
+};

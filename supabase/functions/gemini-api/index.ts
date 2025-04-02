@@ -22,22 +22,35 @@ serve(async (req) => {
     // Parse the request body
     const { action, prompt, count, examType, difficulty, askedQuestionIds, language = 'english' } = await req.json();
 
-    // Get the stored API key from our settings table
+    // Try to get API key from settings table first
     const { data: settingsData, error: settingsError } = await supabase
       .from('settings')
       .select('value')
       .eq('key', 'GEMINI_API_KEY')
       .single();
 
-    if (settingsError || !settingsData) {
-      console.error('Error fetching API key:', settingsError);
-      return new Response(
-        JSON.stringify({ error: 'API key not configured on the server' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+    // If there's an error or no key found, use the default key
+    let GEMINI_API_KEY = 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik';
+    
+    if (!settingsError && settingsData?.value) {
+      GEMINI_API_KEY = settingsData.value;
+    } else {
+      console.log('Using default Gemini API key');
+      
+      // Store the default API key if it's not already saved
+      const { error: saveError } = await supabase
+        .from('settings')
+        .upsert({ 
+          key: 'GEMINI_API_KEY',
+          value: GEMINI_API_KEY
+        }, { 
+          onConflict: 'key' 
+        });
+        
+      if (saveError) {
+        console.error('Error saving default Gemini API key:', saveError);
+      }
     }
-
-    const GEMINI_API_KEY = settingsData.value;
 
     // Handle different actions
     if (action === 'generate-questions') {
@@ -52,6 +65,7 @@ serve(async (req) => {
         2. Each question must have a different topic/concept to ensure variety.
         3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
         4. The language of the questions must be ${language}.
+        5. If the language is not English, make sure to write the entire question, options, and explanation in that language.
         
         Format each question with:
         1. Question text
