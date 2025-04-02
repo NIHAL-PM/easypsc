@@ -86,3 +86,63 @@ export const isNewsApiKeyConfigured = (): boolean => {
 export const validateAdminCredentials = (username: string, password: string): boolean => {
   return username === 'bluewaterbottle' && password === 'waterbottle';
 };
+
+/**
+ * Get a specific API key by its name
+ */
+export const getApiKey = async (keyName: string): Promise<string | null> => {
+  // Try to get from localStorage first
+  const storedKey = localStorage.getItem(keyName);
+  if (storedKey) {
+    return storedKey;
+  }
+  
+  // If not in localStorage, try to get from Supabase settings
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-settings', {
+      body: {
+        action: 'get',
+        key: keyName
+      }
+    });
+    
+    if (error) {
+      console.error(`Error getting ${keyName}:`, error);
+      return null;
+    }
+    
+    return data?.value || DEFAULT_API_KEYS[keyName as keyof typeof DEFAULT_API_KEYS] || null;
+  } catch (error) {
+    console.error(`Error getting ${keyName}:`, error);
+    return DEFAULT_API_KEYS[keyName as keyof typeof DEFAULT_API_KEYS] || null;
+  }
+};
+
+/**
+ * Save an API key
+ */
+export const saveApiKey = async (keyName: string, value: string): Promise<boolean> => {
+  try {
+    // Save to localStorage
+    localStorage.setItem(keyName, value);
+    
+    // Also save to Supabase settings
+    const { error } = await supabase.functions.invoke('admin-settings', {
+      body: {
+        action: 'set',
+        key: keyName,
+        value
+      }
+    });
+    
+    if (error) {
+      console.error(`Error saving ${keyName}:`, error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Error saving ${keyName}:`, error);
+    return false;
+  }
+};

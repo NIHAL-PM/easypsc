@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, LineChart, PieChart, UserCog, Users, Key, Settings, Database, CircleAlert } from 'lucide-react';
-import { getApiKey, saveApiKey } from '@/lib/api-key';
 import ApiKeyManager from '@/components/ApiKeyManager';
 import AdminLogin from '@/components/AdminLogin';
 

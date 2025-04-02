@@ -31,14 +31,17 @@ serve(async (req) => {
     
     // Get News API key from settings
     const { data: keyData, error: keyError } = await supabaseAdmin
-      .rpc('get_setting_value', { setting_key: 'NEWS_API_KEY' });
+      .from('settings')
+      .select('value')
+      .eq('key', 'NEWS_API_KEY')
+      .single();
     
-    if (keyError) {
+    if (keyError && keyError.code !== 'PGRST116') {
       console.error('Error getting NEWS_API_KEY:', keyError);
       throw new Error('Unable to retrieve API key');
     }
     
-    const NEWS_API_KEY = keyData || '7c64a4f4675a425ebe9fc4895fc6e273'; // Use default if not found
+    const NEWS_API_KEY = keyData?.value || '7c64a4f4675a425ebe9fc4895fc6e273'; // Use default if not found
     
     // Parse request
     const params: NewsRequestParams = await req.json();

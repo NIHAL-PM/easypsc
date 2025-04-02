@@ -10,7 +10,8 @@ import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
-import { isGeminiApiKeyConfigured, getGeminiApiKey } from "./lib/env";
+import { isGeminiApiKeyConfigured } from "./lib/api-key";
+import { initializeDefaultApiKeys } from "./lib/api-key";
 
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -27,11 +28,17 @@ const App = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // Check for stored API key in localStorage first
-    const storedApiKey = localStorage.getItem('GEMINI_API_KEY');
+    // Initialize default API keys if they're not already set
+    initializeDefaultApiKeys()
+      .then(() => {
+        console.log('API keys initialized');
+      })
+      .catch(error => {
+        console.error('Error initializing API keys:', error);
+      });
     
     // Check if API key is properly configured
-    if (!storedApiKey && !isGeminiApiKeyConfigured()) {
+    if (!isGeminiApiKeyConfigured()) {
       console.warn("Gemini API key not found. Questions may not load correctly.");
       // Only show toast if on non-admin page
       if (!window.location.pathname.includes('/admin')) {
