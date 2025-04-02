@@ -8,11 +8,20 @@ import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
+import { 
+  Loader2, 
+  BrainCircuit, 
+  Sparkles, 
+  ShieldCheck, 
+  ShieldAlert, 
+  Flame,
+  Globe
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
 import { isGeminiApiKeyConfigured } from '@/lib/env';
 import { useQuestionStore } from '@/services/questionStore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const QuestionGenerator = () => {
   const { 
@@ -29,9 +38,31 @@ const QuestionGenerator = () => {
   const { customQuestions } = useQuestionStore();
   
   const [difficulty, setDifficulty] = useState('medium');
+  const [language, setLanguage] = useState('english');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
     return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
   });
+  
+  const languages = [
+    { id: 'english', name: 'English' },
+    { id: 'hindi', name: 'Hindi' },
+    { id: 'tamil', name: 'Tamil' },
+    { id: 'telugu', name: 'Telugu' },
+    { id: 'marathi', name: 'Marathi' },
+    { id: 'bengali', name: 'Bengali' },
+    { id: 'gujarati', name: 'Gujarati' },
+    { id: 'kannada', name: 'Kannada' },
+    { id: 'malayalam', name: 'Malayalam' },
+    { id: 'punjabi', name: 'Punjabi' },
+    { id: 'urdu', name: 'Urdu' }
+  ];
+  
+  useEffect(() => {
+    // If user has a preferred language, use it
+    if (user?.preferredLanguage) {
+      setLanguage(user.preferredLanguage);
+    }
+  }, [user]);
   
   const handleApiKeySubmit = (apiKey: string) => {
     setApiKeyConfigured(true);
@@ -99,7 +130,8 @@ const QuestionGenerator = () => {
       // Track user action
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
-        difficulty
+        difficulty,
+        language
       });
       
       // Generate 5 questions for premium, or limited questions for free users
@@ -109,7 +141,8 @@ const QuestionGenerator = () => {
         examType: user.examType,
         difficulty: difficulty as any,
         count,
-        askedQuestionIds // Pass the IDs of questions that have already been asked
+        askedQuestionIds, // Pass the IDs of questions that have already been asked
+        language
       });
       
       if (generatedQuestions.length === 0) {
@@ -240,6 +273,28 @@ const QuestionGenerator = () => {
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                <Globe className="w-4 h-4 text-indigo-500" />
+                <span>Question Language</span>
+              </Label>
+              <Select 
+                value={language}
+                onValueChange={setLanguage}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map(lang => (
+                    <SelectItem key={lang.id} value={lang.id}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

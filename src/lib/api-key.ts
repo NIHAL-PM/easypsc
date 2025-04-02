@@ -77,7 +77,7 @@ export const verifyApiKeyConfigured = async (key: string): Promise<boolean> => {
  */
 export const ensureSettingsTableExists = async (): Promise<boolean> => {
   try {
-    // Instead of using RPC, we'll use the edge function to create the settings table
+    // Use the proper edge function to create the settings table
     const { data, error } = await supabase.functions.invoke('admin-settings', {
       body: {
         action: 'ensure-table-exists'
@@ -100,6 +100,9 @@ export const ensureSettingsTableExists = async (): Promise<boolean> => {
  * Initialize default API keys
  */
 export const initializeDefaultApiKeys = async (): Promise<void> => {
+  // First ensure the settings table exists
+  await ensureSettingsTableExists();
+  
   // Check if Gemini API key exists, if not, set the default one
   const geminiKey = await getApiKey('GEMINI_API_KEY');
   if (!geminiKey) {
