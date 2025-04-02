@@ -77,7 +77,12 @@ export const verifyApiKeyConfigured = async (key: string): Promise<boolean> => {
  */
 export const ensureSettingsTableExists = async (): Promise<boolean> => {
   try {
-    const { error } = await supabase.rpc('create_settings_if_not_exists');
+    // Instead of using RPC, we'll use the edge function to create the settings table
+    const { data, error } = await supabase.functions.invoke('admin-settings', {
+      body: {
+        action: 'ensure-table-exists'
+      }
+    });
     
     if (error) {
       console.error('Error ensuring settings table exists:', error);

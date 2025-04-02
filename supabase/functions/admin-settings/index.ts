@@ -20,32 +20,47 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { action, key, value } = await req.json();
+    const requestData = await req.json();
+    const { action, key, value } = requestData;
 
-    // Create settings table if it doesn't exist
-    const { error: tableError } = await supabase.rpc('create_settings_if_not_exists');
-    if (tableError) {
-      console.log('Error checking/creating settings table:', tableError);
-      // Try to create it manually if the RPC doesn't exist
-      await supabase.query(`
-        CREATE TABLE IF NOT EXISTS public.settings (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          key TEXT UNIQUE NOT NULL,
-          value TEXT NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-        );
-      `);
-    }
+    // Helper function to create settings table if it doesn't exist
+    const ensureSettingsTableExists = async () => {
+      try {
+        // Try to create the table if it doesn't exist
+        await supabase.query(`
+          CREATE TABLE IF NOT EXISTS public.settings (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            key TEXT UNIQUE NOT NULL,
+            value TEXT NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+          );
+        `);
+        return true;
+      } catch (error) {
+        console.error('Error creating settings table:', error);
+        return false;
+      }
+    };
 
     // Handle different actions
-    if (action === 'get') {
+    if (action === 'ensure-table-exists') {
+      const tableCreated = await ensureSettingsTableExists();
+      
+      return new Response(
+        JSON.stringify({ success: tableCreated }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (action === 'get') {
       if (!key) {
         return new Response(
           JSON.stringify({ error: 'Missing required field: key' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
+
+      // Make sure the table exists
+      await ensureSettingsTableExists();
 
       // Get the setting value
       const { data, error } = await supabase
@@ -73,6 +88,9 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
+
+      // Make sure the table exists
+      await ensureSettingsTableExists();
 
       // Check if the setting exists
       const { data: existingData, error: checkError } = await supabase

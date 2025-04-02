@@ -8,6 +8,7 @@ interface GenerateQuestionsOptions {
   difficulty: QuestionDifficulty;
   count: number;
   askedQuestionIds?: string[];
+  language?: string;
 }
 
 /**
