@@ -1,6 +1,8 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.1.1';
+import { v4 as uuidv4 } from 'https://esm.sh/uuid@9.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,256 +12,174 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders,
+    });
   }
-
+  
   try {
     // Create a Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Parse the request body
-    const { action, prompt, count, examType, difficulty, askedQuestionIds, language = 'english' } = await req.json();
-
-    // Try to get API key from settings table first
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'GEMINI_API_KEY')
-      .single();
-
-    // If there's an error or no key found, use the default key
-    let GEMINI_API_KEY = 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik';
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
     
-    if (!settingsError && settingsData?.value) {
-      GEMINI_API_KEY = settingsData.value;
-    } else {
-      console.log('Using default Gemini API key');
-      
-      // Store the default API key if it's not already saved
-      const { error: saveError } = await supabase
-        .from('settings')
-        .upsert({ 
-          key: 'GEMINI_API_KEY',
-          value: GEMINI_API_KEY
-        }, { 
-          onConflict: 'key' 
-        });
-        
-      if (saveError) {
-        console.error('Error saving default Gemini API key:', saveError);
-      }
+    // Get Gemini API key from settings
+    const { data: keyData, error: keyError } = await supabaseAdmin
+      .rpc('get_setting_value', { setting_key: 'GEMINI_API_KEY' });
+    
+    if (keyError) {
+      console.error('Error getting GEMINI_API_KEY:', keyError);
+      throw new Error('Unable to retrieve API key');
     }
-
-    // Handle different actions
+    
+    const GEMINI_API_KEY = keyData || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
+    
+    // Initialize the Google Generative AI
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
+    // Parse the request body
+    const { action, ...requestParams } = await req.json();
+    
     if (action === 'generate-questions') {
-      if (!prompt) {
-        // Create a prompt for question generation with the specified language
-        const generationPrompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
-        Difficulty level: ${difficulty}.
-        Generate questions in ${language}.
+      const { examType, difficulty, count = 5, askedQuestionIds = [], language = 'english' } = requestParams;
+      
+      // Create a system prompt for generating questions based on exam type and difficulty
+      let systemPrompt = `Generate ${count} multiple choice questions for ${examType} exam preparation at ${difficulty} difficulty level. `;
+      
+      // Add language instruction
+      systemPrompt += `Please provide the questions and all content in ${language} language. `;
+      
+      // Add more specific instructions based on exam type
+      if (examType === 'UPSC') {
+        systemPrompt += "Focus on Indian history, polity, geography, and current affairs. ";
+      } else if (examType === 'SSC') {
+        systemPrompt += "Include questions on general knowledge, quantitative aptitude, and reasoning. ";
+      } else if (examType === 'Banking') {
+        systemPrompt += "Include questions on banking awareness, quantitative aptitude, and reasoning. ";
+      } else if (examType === 'PSC') {
+        systemPrompt += "Focus on state-specific current affairs, history, geography and administration. ";
+      }
+      
+      // Add formatting instructions
+      systemPrompt += `
+      Format each question as a JSON object with the following structure:
+      {
+        "id": "unique-id",
+        "text": "question text",
+        "options": ["option1", "option2", "option3", "option4"],
+        "correctOption": 0-3 (index of correct option),
+        "explanation": "explanation of the correct answer",
+        "category": "subject category",
+        "difficulty": "${difficulty}"
+      }
+      
+      Return a JSON array of these question objects. Make sure each question has a unique ID and is not in the list of already asked questions: ${JSON.stringify(askedQuestionIds)}.
+      `;
+      
+      const result = await model.generateContent(systemPrompt);
+      const response = await result.response;
+      const responseText = response.text();
+      
+      try {
+        // Try to parse the response as JSON directly
+        let questionsArray = JSON.parse(responseText);
         
-        Critical requirements:
-        1. Generate completely new and unique questions that have not been used before.
-        2. Each question must have a different topic/concept to ensure variety.
-        3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
-        4. The language of the questions must be ${language}.
-        5. If the language is not English, make sure to write the entire question, options, and explanation in that language.
+        // Check if the response is wrapped in a code block (```json ... ```)
+        if (!Array.isArray(questionsArray)) {
+          // Extract JSON from markdown code blocks if present
+          const jsonMatch = responseText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+          if (jsonMatch && jsonMatch[1]) {
+            questionsArray = JSON.parse(jsonMatch[1]);
+          } else {
+            // If we can't extract a JSON array, throw an error
+            throw new Error('Could not parse response as JSON array');
+          }
+        }
         
-        Format each question with:
-        1. Question text
-        2. Four options (A, B, C, D)
-        3. The correct option (0-indexed, 0 for A, 1 for B, etc.)
-        4. A brief explanation of the correct answer
-        5. Category/subject of the question
+        // Ensure each question has a valid id
+        questionsArray = questionsArray.map(q => ({
+          ...q,
+          id: q.id || uuidv4()
+        }));
         
-        Return as a JSON array of question objects with the following structure:
-        {
-          "id": "unique-id",
-          "text": "question text",
-          "options": ["option A", "option B", "option C", "option D"],
-          "correctOption": 0,
-          "explanation": "explanation of the correct answer",
-          "category": "subject/category",
-          "difficulty": "${difficulty}",
-          "language": "${language}"
-        }`;
-
-        console.log('Calling Gemini API with generated prompt for language:', language);
+        // Save questions to database for re-use
+        if (questionsArray.length > 0) {
+          for (const question of questionsArray) {
+            // Check if the question already exists by doing an upsert operation
+            const { error: upsertError } = await supabaseAdmin
+              .from('questions')
+              .upsert({
+                id: question.id,
+                question: question.text,
+                options: question.options,
+                correct_answer: question.options[question.correctOption],
+                explanation: question.explanation,
+                tags: [question.category],
+                difficulty_level: question.difficulty,
+                exam_category_id: null // This would need to be mapped to an actual category ID
+              });
+              
+            if (upsertError) {
+              console.error('Error saving question:', upsertError);
+            }
+          }
+        }
         
-        // Call the Gemini API
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        return new Response(
+          JSON.stringify({
+            questions: questionsArray
+          }),
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: generationPrompt }] }],
-              generationConfig: {
-                temperature: 0.7,
-                topP: 0.9,
-                topK: 40,
-                maxOutputTokens: 8192,
-              }
-            })
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Gemini API error:', errorData);
-          return new Response(
-            JSON.stringify({ error: `API error: ${response.status}` }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
-          );
-        }
-
-        const data = await response.json();
-        console.log('Gemini API response received');
-
-        // Extract the content from the response
-        const jsonContent = data.candidates[0].content.parts[0].text;
-
-        // Extract the JSON array from the response (handling markdown code blocks if present)
-        const jsonRegex = /```(?:json)?([\s\S]*?)```|(\[[\s\S]*\])/;
-        const match = jsonRegex.exec(jsonContent);
-
-        if (!match) {
-          return new Response(
-            JSON.stringify({ error: 'Failed to parse JSON response from API' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        }
-
-        const questionsJson = match[1]?.trim() || match[2]?.trim() || match[0]?.trim();
-        let questions = JSON.parse(questionsJson);
-
-        // Filter out questions that have already been asked
-        if (askedQuestionIds && askedQuestionIds.length > 0) {
-          questions = questions.filter(q => !askedQuestionIds.includes(q.id));
-        }
-
-        // Store the generated questions in Supabase for future reference
-        const { error: insertError } = await supabase
-          .from('questions')
-          .insert(questions.map(q => ({
-            question: q.text,
-            options: q.options,
-            correct_answer: q.options[q.correctOption],
-            explanation: q.explanation,
-            difficulty_level: q.difficulty,
-            tags: [q.category],
-            exam_category_id: null, // We'll need to create a mapping for this
-            is_current_affairs: false,
-            language: language
-          })));
-
-        if (insertError) {
-          console.error('Error storing questions in database:', insertError);
-          // Continue anyway, we'll return the questions even if storage fails
-        }
-
-        return new Response(
-          JSON.stringify({ questions: questions.slice(0, count) }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } else {
-        // Use the provided prompt directly
-        console.log('Calling Gemini API with provided prompt');
+      } catch (parseError) {
+        console.error('Error parsing Gemini response:', parseError);
+        console.log('Raw response:', responseText);
         
-        // Call the Gemini API
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.7,
-                topP: 0.9,
-                topK: 40,
-                maxOutputTokens: 8192,
-              }
-            })
-          }
-        );
-
-        const data = await response.json();
         return new Response(
-          JSON.stringify({ response: data }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            error: 'Failed to parse generated questions',
+            questions: []
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
         );
       }
     } else if (action === 'generate-chat') {
-      // Handle chat generation
-      if (!prompt) {
-        return new Response(
-          JSON.stringify({ error: 'Prompt is required for chat generation' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      console.log('Generating chat response with prompt:', prompt);
+      const { prompt } = requestParams;
       
-      // Call the Gemini API for chat
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      // Simple chat generation
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const chatResponse = response.text();
+      
+      return new Response(
+        JSON.stringify({
+          response: chatResponse
+        }),
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `You are an expert exam preparation assistant for competitive exams like UPSC, PSC, SSC, and Banking exams. 
-                    Provide helpful, accurate, and concise answers to the user's questions. Focus on being educational and helpful.
-                    
-                    User message: ${prompt}`
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              topP: 0.9,
-              topK: 40,
-              maxOutputTokens: 4096,
-            }
-          })
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Gemini API error in chat:', errorData);
-        return new Response(
-          JSON.stringify({ error: `API error: ${response.status}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      
-      // Extract the content from the response
-      const chatResponse = data.candidates[0].content.parts[0].text;
-      return new Response(
-        JSON.stringify({ response: chatResponse }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Invalid action specified' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      throw new Error('Invalid action');
     }
   } catch (error) {
-    console.error('Error in gemini-api function:', error);
+    console.error('Gemini API function error:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({
+        error: error.message || 'An unexpected error occurred'
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
     );
   }
 });

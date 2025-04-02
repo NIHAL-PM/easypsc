@@ -1,3 +1,4 @@
+
 export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'english' | 'hindi' | 'tamil' | 'telugu' | 'malayalam' | 'marathi' | 'bengali' | 'gujarati' | 'kannada' | 'punjabi' | 'urdu';
@@ -14,7 +15,7 @@ export interface User {
   currentStreak: number;
   lastActive: Date | null;
   lastQuestionTime: number | null;
-  preferredLanguage?: string;
+  preferredLanguage: string;
 }
 
 export interface Question {
@@ -54,4 +55,9 @@ export interface AppState {
   isLoading: boolean;
   showExplanation: boolean;
   askedQuestionIds: string[];
+}
+
+export interface AdminCredentials {
+  username: string;
+  password: string;
 }

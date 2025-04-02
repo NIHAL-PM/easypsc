@@ -1,1 +1,20 @@
+
 project_id = "zwtfvwfluoebddezbjqe"
+
+[functions.gemini-api]
+verify_jwt = false
+
+[functions.news-feed]
+verify_jwt = false
+
+[functions.admin-settings]
+verify_jwt = false
+
+[functions.chat-room]
+verify_jwt = false
+
+[functions.track-activity]
+verify_jwt = false
+
+[functions.system-stats]
+verify_jwt = false

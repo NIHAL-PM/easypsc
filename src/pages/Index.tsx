@@ -28,49 +28,114 @@ const Index = () => {
   // Check if user is already authenticated with Supabase on component mount
   useEffect(() => {
     const checkAuth = async () => {
-      // Initialize API keys
-      await initializeDefaultApiKeys();
-      
-      // Check current auth session
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error checking authentication:', error);
-        setIsLoading(false);
-        return;
-      }
-      
-      if (data?.session?.user) {
-        // User is authenticated, get their profile info
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        if (profileData) {
-          // Set user in our app state
-          setUser({
-            id: data.session.user.id,
-            name: profileData.full_name || 'User',
-            email: data.session.user.email || '',
-            examType: (profileData.preferred_exams?.[0] as ExamType) || 'UPSC',
-            preferredLanguage: profileData.preferred_language || 'english',
-            isPremium: false, // This would come from your subscription system
-            monthlyQuestionsRemaining: 10,
-            questionsAnswered: 0,
-            questionsCorrect: 0,
-            currentStreak: 0,
-            lastActive: new Date(),
-            lastQuestionTime: null
-          });
+      try {
+        // Initialize API keys
+        await initializeDefaultApiKeys();
+        
+        // Check current auth session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking authentication:', error);
+          setIsLoading(false);
+          return;
         }
+        
+        if (data?.session?.user) {
+          // User is authenticated, get their profile info
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          }
+          
+          if (profileData) {
+            // Set user in our app state
+            setUser({
+              id: data.session.user.id,
+              name: profileData.full_name || 'User',
+              email: data.session.user.email || '',
+              examType: (profileData.preferred_exams?.[0] as ExamType) || 'UPSC',
+              preferredLanguage: profileData.preferred_language || 'english',
+              isPremium: false, // This would come from your subscription system
+              monthlyQuestionsRemaining: 10,
+              questionsAnswered: 0,
+              questionsCorrect: 0,
+              currentStreak: 0,
+              lastActive: new Date(),
+              lastQuestionTime: null
+            });
+          } else {
+            // If no profile exists yet (possible if auth was set up but profile wasn't created)
+            setUser({
+              id: data.session.user.id,
+              name: data.session.user.email?.split('@')[0] || 'User',
+              email: data.session.user.email || '',
+              examType: 'UPSC',
+              preferredLanguage: 'english',
+              isPremium: false,
+              monthlyQuestionsRemaining: 10,
+              questionsAnswered: 0,
+              questionsCorrect: 0,
+              currentStreak: 0,
+              lastActive: new Date(),
+              lastQuestionTime: null
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Unexpected error during auth check:', err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setIsLoading(true);
+          
+          // Get profile data
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileData) {
+            setUser({
+              id: session.user.id,
+              name: profileData.full_name || 'User',
+              email: session.user.email || '',
+              examType: (profileData.preferred_exams?.[0] as ExamType) || 'UPSC',
+              preferredLanguage: profileData.preferred_language || 'english',
+              isPremium: false,
+              monthlyQuestionsRemaining: 10,
+              questionsAnswered: 0,
+              questionsCorrect: 0,
+              currentStreak: 0,
+              lastActive: new Date(),
+              lastQuestionTime: null
+            });
+          }
+          
+          setIsLoading(false);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+    
     checkAuth();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [setUser]);
   
   return (

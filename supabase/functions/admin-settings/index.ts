@@ -1,157 +1,166 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
+
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.1.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface AdminRequestParams {
+  action: string;
+  key?: string;
+  value?: string;
+  username?: string;
+  password?: string;
+}
+
+const ADMIN_CREDENTIALS = {
+  username: 'bluewaterbottle',
+  password: 'waterbottle'
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders,
+    });
   }
-
+  
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { action, key, value } = await req.json();
-
-    if (action === 'ensure-table-exists') {
-      // Check if settings table exists, if not, create it
-      const { error: checkError } = await supabase.rpc(
-        'check_table_exists',
-        { table_name: 'settings' }
-      );
-      
-      if (checkError) {
-        console.log('Settings table does not exist, creating it now...');
-        
-        const { error: createError } = await supabase.rpc(
-          'create_settings_table'
+    // Create a Supabase client
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    // Parse request
+    const params: AdminRequestParams = await req.json();
+    const { action, key, value, username, password } = params;
+    
+    // Validate admin credentials for certain actions
+    if (action === 'set' || action === 'delete') {
+      // Check if the provided credentials match the admin credentials
+      // Don't do this in production; use JWT or more secure auth
+      if (!username || !password || username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+        return new Response(
+          JSON.stringify({
+            status: 'error',
+            message: 'Unauthorized'
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
         );
-        
-        if (createError) {
-          console.error('Error creating settings table:', createError);
-          return new Response(
-            JSON.stringify({ error: 'Failed to create settings table' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        }
-        
-        // Set default API keys
-        await supabase
-          .from('settings')
-          .upsert(
-            [
-              { key: 'GEMINI_API_KEY', value: 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik' },
-              { key: 'NEWS_API_KEY', value: '7c64a4f4675a425ebe9fc4895fc6e273' }
-            ],
-            { onConflict: 'key' }
-          );
-        
-        console.log('Settings table created and default API keys set');
+      }
+    }
+    
+    if (action === 'set' && key && value !== undefined) {
+      // First check if the setting already exists
+      const { data: existingData, error: existingError } = await supabaseAdmin
+        .from('settings')
+        .select('id')
+        .eq('key', key)
+        .single();
+      
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw new Error(`Error checking setting: ${existingError.message}`);
+      }
+      
+      // If the setting exists, update it; otherwise, insert a new record
+      const { error: upsertError } = await supabaseAdmin
+        .from('settings')
+        .upsert({
+          id: existingData?.id,
+          key,
+          value,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (upsertError) {
+        throw new Error(`Error saving setting: ${upsertError.message}`);
       }
       
       return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          status: 'success',
+          message: 'Setting saved successfully'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
-    } else if (action === 'get') {
-      if (!key) {
-        return new Response(
-          JSON.stringify({ error: 'Key parameter is required' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      const { data, error } = await supabase
+    } else if (action === 'get' && key) {
+      // Get a setting by key
+      const { data, error } = await supabaseAdmin
         .from('settings')
         .select('value')
         .eq('key', key)
         .single();
-
-      if (error) {
-        console.error('Error fetching setting:', error);
-        return new Response(
-          JSON.stringify({ error: 'Failed to fetch setting' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+      
+      if (error && error.code !== 'PGRST116') {
+        throw new Error(`Error getting setting: ${error.message}`);
       }
-
+      
       return new Response(
-        JSON.stringify({ value: data.value }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          status: 'success',
+          value: data?.value || null
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
-    } else if (action === 'set') {
-      if (!key || value === undefined) {
-        return new Response(
-          JSON.stringify({ error: 'Key and value parameters are required' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      const { error } = await supabase
+    } else if (action === 'delete' && key) {
+      // Delete a setting by key
+      const { error } = await supabaseAdmin
         .from('settings')
-        .upsert({ key, value }, { onConflict: 'key' });
-
+        .delete()
+        .eq('key', key);
+      
       if (error) {
-        console.error('Error saving setting:', error);
-        return new Response(
-          JSON.stringify({ error: 'Failed to save setting' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+        throw new Error(`Error deleting setting: ${error.message}`);
       }
-
+      
       return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          status: 'success',
+          message: 'Setting deleted successfully'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
-    } else if (action === 'clear-database') {
-      // This is a dangerous operation, only admin should be able to do this
-      console.log('Clearing database...');
-      
-      // Delete all user data except settings and admin accounts
-      
-      // Delete user progress data
-      const { error: progressError } = await supabase
-        .from('user_progress')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Dummy condition to delete all
-      
-      if (progressError) {
-        console.error('Error deleting user progress:', progressError);
-      }
-      
-      // Delete questions data if needed (you may want to keep questions)
-      /*
-      const { error: questionsError } = await supabase
-        .from('questions')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (questionsError) {
-        console.error('Error deleting questions:', questionsError);
-      }
-      */
+    } else if (action === 'verify-admin') {
+      // Verify admin credentials
+      const isValidAdmin = username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password;
       
       return new Response(
-        JSON.stringify({ success: true, message: 'Database cleared' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          status: 'success',
+          isValidAdmin
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      throw new Error('Invalid action or missing parameters');
     }
   } catch (error) {
-    console.error('Error in admin-settings function:', error);
+    console.error('Admin-settings function error:', error);
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({
+        status: 'error',
+        message: error.message || 'An unexpected error occurred',
+      }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
     );
   }
 });
