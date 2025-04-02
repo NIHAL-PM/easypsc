@@ -1,6 +1,5 @@
-import { Question, ExamType, QuestionDifficulty } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
+import { ExamType, Question, QuestionDifficulty, User } from '@/types';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -10,46 +9,28 @@ interface GenerateQuestionsOptions {
   language?: string;
 }
 
-/**
- * Generates AI-powered questions using the Gemini API through Supabase Edge Function
- */
-export const generateQuestions = async ({
-  examType,
-  difficulty,
-  count,
-  askedQuestionIds = [],
-  language = 'english'
-}: GenerateQuestionsOptions): Promise<Question[]> => {
+export const generateQuestions = async (options: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
-    console.log('Generating questions with Supabase Edge Function');
-    
     const { data, error } = await supabase.functions.invoke('gemini-api', {
       body: {
         action: 'generate-questions',
-        examType,
-        difficulty,
-        count,
-        askedQuestionIds,
-        language
+        examType: options.examType,
+        difficulty: options.difficulty,
+        count: options.count,
+        askedQuestionIds: options.askedQuestionIds || [],
+        language: options.language || 'english'
       }
     });
-    
+
     if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message);
+      console.error('Error generating questions:', error);
+      return [];
     }
-    
-    console.log('Received response from edge function:', data);
-    
-    if (data.error) {
-      throw new Error(data.error);
-    }
-    
-    // Return the questions from the response
+
     return data.questions || [];
   } catch (error) {
-    console.error('Error generating questions:', error);
-    throw error;
+    console.error('Error in generateQuestions:', error);
+    return [];
   }
 };
 

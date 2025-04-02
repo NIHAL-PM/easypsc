@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { AppState, ExamType, Question, User, UserStats } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 // Helper function to safely handle Object.entries for potentially null/undefined objects
 const safeObjectEntries = (obj: Record<string, number> | null | undefined): [string, number][] => {
@@ -25,6 +26,7 @@ type AppStoreWithActions = AppState & {
   getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
   setLastQuestionTime: (time: number) => void;
+  setPreferredLanguage: (language: string) => void;
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -41,7 +43,7 @@ export const useAppStore = create<AppStoreWithActions>()(
       askedQuestionIds: [],
 
       // Actions
-      login: (name, email, examType) => {
+      login: async (name, email, examType) => {
         const { allUsers } = get();
         
         // Check if user already exists
@@ -73,7 +75,8 @@ export const useAppStore = create<AppStoreWithActions>()(
           questionsCorrect: 0,
           currentStreak: 0,
           lastActive: new Date(),
-          lastQuestionTime: null
+          lastQuestionTime: null,
+          preferredLanguage: 'english'
         };
         
         set(state => ({ 
@@ -84,7 +87,17 @@ export const useAppStore = create<AppStoreWithActions>()(
       
       setUser: (user) => set({ user }),
       
-      logout: () => set({ user: null }),
+      logout: async () => {
+        try {
+          // Sign out from Supabase
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Error signing out:', error);
+        }
+        
+        // Reset app state
+        set({ user: null });
+      },
       
       upgradeUserToPremium: (userId) => set(state => {
         // Update the user in allUsers
@@ -243,6 +256,40 @@ export const useAppStore = create<AppStoreWithActions>()(
           ...user,
           lastQuestionTime: time
         };
+        
+        // Update allUsers as well
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === user.id ? updatedUser : u
+        );
+        
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers
+        });
+      },
+      
+      setPreferredLanguage: (language) => {
+        const { user, allUsers } = get();
+        
+        if (!user) return;
+        
+        const updatedUser = {
+          ...user,
+          preferredLanguage: language
+        };
+        
+        // Update user profile in Supabase if authenticated
+        try {
+          supabase
+            .from('profiles')
+            .update({ preferred_language: language })
+            .eq('id', user.id)
+            .then(({ error }) => {
+              if (error) console.error('Error updating language preference:', error);
+            });
+        } catch (error) {
+          console.error('Error updating language preference:', error);
+        }
         
         // Update allUsers as well
         const updatedAllUsers = allUsers.map(u => 

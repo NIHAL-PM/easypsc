@@ -1,14 +1,17 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore } from '@/lib/store';
-import { ExamType, User } from '@/types';
+import { ExamType } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-import { CheckCircle, User as UserIcon, Mail, BookOpen, GraduationCap, Brain, SquarePen, Sparkles } from 'lucide-react';
+import { CheckCircle, User as UserIcon, Mail, BookOpen, GraduationCap, Brain, SquarePen, Sparkles, Globe } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const UserSetup = () => {
   const { setUser } = useAppStore();
@@ -16,42 +19,91 @@ const UserSetup = () => {
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
+  const [preferredLanguage, setPreferredLanguage] = useState('english');
+  const [isLoading, setIsLoading] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const languages = [
+    { id: 'english', name: 'English' },
+    { id: 'hindi', name: 'Hindi' },
+    { id: 'tamil', name: 'Tamil' },
+    { id: 'telugu', name: 'Telugu' },
+    { id: 'marathi', name: 'Marathi' },
+    { id: 'bengali', name: 'Bengali' },
+    { id: 'gujarati', name: 'Gujarati' },
+    { id: 'kannada', name: 'Kannada' },
+    { id: 'malayalam', name: 'Malayalam' },
+    { id: 'punjabi', name: 'Punjabi' },
+    { id: 'urdu', name: 'Urdu' }
+  ];
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email) {
+    if (!name || !email || !password) {
       toast({
-        title: 'Please fill in all fields',
+        title: 'Please fill in all required fields',
         variant: 'destructive'
       });
       return;
     }
     
-    // Generate a random user ID
-    const userId = Math.random().toString(36).substring(2, 15);
+    setIsLoading(true);
     
-    const newUser: User = {
-      id: userId,
-      name,
-      email,
-      examType,
-      questionsAnswered: 0,
-      questionsCorrect: 0,
-      isPremium: false,
-      monthlyQuestionsRemaining: 10, // Free tier gets 10 questions
-      currentStreak: 0,
-      lastActive: new Date(), // Add current date
-      lastQuestionTime: null // Add missing property
-    };
-    
-    setUser(newUser);
-    
-    toast({
-      title: 'Welcome to Easy PSC!',
-      description: 'Your profile has been set up successfully.',
-    });
+    try {
+      // Register with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: name,
+            preferred_language: preferredLanguage,
+            exam_type: examType,
+          }
+        }
+      });
+      
+      if (authError) throw authError;
+      
+      // Get the user from the response
+      const user = authData?.user;
+      
+      if (user) {
+        // Create our app's user object
+        const newUser = {
+          id: user.id,
+          name,
+          email,
+          examType,
+          preferredLanguage,
+          questionsAnswered: 0,
+          questionsCorrect: 0,
+          isPremium: false,
+          monthlyQuestionsRemaining: 10, // Free tier gets 10 questions
+          currentStreak: 0,
+          lastActive: new Date(),
+          lastQuestionTime: null
+        };
+        
+        setUser(newUser);
+        
+        toast({
+          title: 'Welcome to Easy PSC!',
+          description: 'Your account has been created successfully.',
+        });
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast({
+        title: 'Registration failed',
+        description: error.message || 'An unexpected error occurred. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const container = {
@@ -106,7 +158,7 @@ const UserSetup = () => {
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
-                  <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">Let's get started</span>
+                  <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">Create Account</span>
                 </CardTitle>
                 <CardDescription>Set up your profile to continue</CardDescription>
               </CardHeader>
@@ -123,6 +175,7 @@ const UserSetup = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="border-slate-200 dark:border-slate-700 focus:border-indigo-300 dark:focus:border-indigo-600 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all input-modern"
+                      required
                     />
                   </motion.div>
                   
@@ -138,7 +191,46 @@ const UserSetup = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="border-slate-200 dark:border-slate-700 focus:border-indigo-300 dark:focus:border-indigo-600 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all input-modern"
+                      required
                     />
+                  </motion.div>
+                  
+                  <motion.div variants={item} className="space-y-2">
+                    <Label htmlFor="password" className="flex items-center gap-2">
+                      <UserIcon className="w-4 h-4 text-indigo-500" />
+                      <span>Password</span>
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="border-slate-200 dark:border-slate-700 focus:border-indigo-300 dark:focus:border-indigo-600 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all input-modern"
+                      required
+                    />
+                  </motion.div>
+
+                  <motion.div variants={item} className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-indigo-500" />
+                      <span>Preferred Language</span>
+                    </Label>
+                    <Select 
+                      value={preferredLanguage}
+                      onValueChange={setPreferredLanguage}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {languages.map(lang => (
+                          <SelectItem key={lang.id} value={lang.id}>
+                            {lang.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </motion.div>
                   
                   <motion.div variants={item} className="space-y-2">
@@ -217,9 +309,10 @@ const UserSetup = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl text-white"
+                    disabled={isLoading}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Continue
+                    {isLoading ? "Creating account..." : "Create Account"}
                   </Button>
                 </CardFooter>
               </form>

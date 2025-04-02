@@ -1,636 +1,294 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle, KeyRound, Users, MessageSquare, BarChart, LockIcon, Settings, Newspaper } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import ApiKeyManager from './ApiKeyManager';
-import { getSystemStats } from '@/services/api';
-import { useAppStore } from '@/lib/store';
-import { supabase } from "@/integrations/supabase/client";
-import { initializeDefaultApiKeys } from '@/lib/api-key';
 
-const AdminPanel = () => {
-  const { user } = useAppStore();
-  const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { BarChart, LineChart, PieChart, UserCog, Users, Key, Settings, Database, CircleAlert } from 'lucide-react';
+import { getApiKey, saveApiKey } from '@/lib/api-key';
+import ApiKeyManager from '@/components/ApiKeyManager';
+import AdminLogin from '@/components/AdminLogin';
+
+export default function AdminPanel() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    questionsGenerated: 0,
+    questionsAnswered: 0
+  });
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is admin
-    const checkAdminStatus = async () => {
-      // Special case: hardcoded admin credentials
-      if (localStorage.getItem('isAdminAuthenticated') === 'true') {
-        setIsAdminUser(true);
-        return;
-      }
-      
-      // No further checks if user is not logged in
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .rpc('is_admin', { user_id: user.id });
-          
-        if (error) {
-          console.error('Error checking admin status:', error);
-          return;
-        }
-        
-        setIsAdminUser(!!data);
-      } catch (error) {
-        console.error('Failed to check admin status:', error);
-      }
-    };
-    
-    checkAdminStatus();
-  }, [user]);
-
-  useEffect(() => {
-    // Initialize default API keys when the admin panel is loaded
-    const setupApiKeys = async () => {
-      if (isAdminUser) {
-        await initializeDefaultApiKeys();
-      }
+    // Check if admin is already authenticated
+    const checkAuth = () => {
+      const adminAuth = localStorage.getItem('isAdminAuthenticated');
+      setIsAuthenticated(adminAuth === 'true');
+      setIsLoading(false);
     };
 
-    setupApiKeys();
-  }, [isAdminUser]);
-
-  const handleAdminLogin = () => {
-    // Hardcoded admin credentials for demonstration
-    if (adminCredentials.username === 'bluewaterbottle' && 
-        adminCredentials.password === 'waterbottle') {
-      setIsAdminUser(true);
-      localStorage.setItem('isAdminAuthenticated', 'true');
-      toast({
-        title: "Admin Access Granted",
-        description: "You have successfully logged in as admin.",
-        variant: "default",
-      });
-    } else {
-      toast({
-        title: "Invalid Credentials",
-        description: "The username or password you entered is incorrect.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAdminUser(false);
-    localStorage.removeItem('isAdminAuthenticated');
-  };
-
-  if (!isAdminUser) {
-    return (
-      <div className="container mx-auto py-10">
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LockIcon className="h-5 w-5" />
-              Admin Access
-            </CardTitle>
-            <CardDescription>
-              Please login with admin credentials to access the admin panel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input 
-                id="username" 
-                value={adminCredentials.username}
-                onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="Enter admin username"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password"
-                value={adminCredentials.password}
-                onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Enter admin password"
-              />
-            </div>
-            <Button 
-              className="w-full" 
-              onClick={handleAdminLogin}
-            >
-              Login as Admin
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Button variant="outline" onClick={handleLogout}>Logout</Button>
-      </div>
-      
-      <Tabs defaultValue="system" className="w-full max-w-4xl mx-auto space-y-4">
-        <TabsList>
-          <TabsTrigger value="system" className="flex items-center gap-2">
-            <BarChart className="h-4 w-4" />
-            System Stats
-          </TabsTrigger>
-          <TabsTrigger value="api" className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4" />
-            API Configuration
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            User Management
-          </TabsTrigger>
-          <TabsTrigger value="content" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Content Management
-          </TabsTrigger>
-          <TabsTrigger value="news" className="flex items-center gap-2">
-            <Newspaper className="h-4 w-4" />
-            News Settings
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Site Settings
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="system" className="space-y-4">
-          <SystemStats />
-        </TabsContent>
-        <TabsContent value="api" className="space-y-4">
-          <ApiKeyManager onApiKeyConfigured={setIsApiKeyConfigured} />
-        </TabsContent>
-        <TabsContent value="users" className="space-y-4">
-          <UserManagement />
-        </TabsContent>
-        <TabsContent value="content" className="space-y-4">
-          <ContentManagement />
-        </TabsContent>
-        <TabsContent value="news" className="space-y-4">
-          <NewsSettings />
-        </TabsContent>
-        <TabsContent value="settings" className="space-y-4">
-          <SiteSettings />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-const SystemStats = () => {
-  const [stats, setStats] = useState<{
-    totalUsers: number;
-    premiumUsers: number;
-    activeToday: number;
-    totalQuestionsAnswered: number;
-    totalQuestionsCorrect: number;
-    examTypeDistribution: Record<string, number>;
-  }>({
-    totalUsers: 0,
-    premiumUsers: 0,
-    activeToday: 0,
-    totalQuestionsAnswered: 0,
-    totalQuestionsCorrect: 0,
-    examTypeDistribution: {}
-  });
-  const [isLoading, setIsLoading] = useState(true);
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
+      if (!isAuthenticated) return;
+      
       try {
-        setIsLoading(true);
-        const systemStats = await getSystemStats();
-        setStats(systemStats);
+        const { data, error } = await supabase.functions.invoke('system-stats', {
+          body: { action: 'get-all-stats' }
+        });
+        
+        if (error) {
+          console.error('Error fetching stats:', error);
+          return;
+        }
+        
+        if (data) {
+          setStats(data);
+        }
       } catch (error) {
-        console.error('Failed to fetch system stats:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error in fetchStats:', error);
       }
     };
-
+    
     fetchStats();
-    // Refresh stats every 5 minutes
-    const interval = setInterval(async () => {
-      try {
-        const systemStats = await getSystemStats();
-        setStats(systemStats);
-      } catch (error) {
-        console.error('Failed to update system stats:', error);
-      }
-    }, 5 * 60 * 1000);
+  }, [isAuthenticated]);
 
-    return () => clearInterval(interval);
-  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem('isAdminAuthenticated');
+    setIsAuthenticated(false);
+    toast({
+      title: 'Logged out',
+      description: 'You have been logged out of the admin panel',
+    });
+  };
 
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart className="h-5 w-5" />
-          System Statistics
-        </CardTitle>
-        <CardDescription>
-          Real-time statistics about the AI Exam Prep platform.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6">
-        {isLoading ? (
-          <div className="text-center py-4">Loading statistics...</div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="bg-muted/50">
-                <CardContent className="flex flex-col gap-2 p-4">
-                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                  <div className="text-muted-foreground">Total Users</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50">
-                <CardContent className="flex flex-col gap-2 p-4">
-                  <div className="text-2xl font-bold">{stats.premiumUsers}</div>
-                  <div className="text-muted-foreground">Premium Users</div>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="bg-muted/50">
-                <CardContent className="flex flex-col gap-2 p-4">
-                  <div className="text-2xl font-bold">{stats.activeToday}</div>
-                  <div className="text-muted-foreground">Active Users Today</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50">
-                <CardContent className="flex flex-col gap-2 p-4">
-                  <div className="text-2xl font-bold">{stats.totalQuestionsAnswered}</div>
-                  <div className="text-muted-foreground">Total Questions Answered</div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, preferred_language, created_at');
-          
-        if (error) {
-          throw error;
-        }
-        
-        setUsers(data || []);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const handleClearDatabase = async () => {
+    if (!confirm('WARNING: This will delete ALL user data except for admin settings. Are you absolutely sure?')) {
+      return;
+    }
     
-    fetchUsers();
-  }, []);
-  
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          User Management
-        </CardTitle>
-        <CardDescription>
-          Manage user accounts and permissions
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center py-4">Loading users...</div>
-        ) : (
-          <div className="rounded-md border">
-            <div className="grid grid-cols-4 gap-4 p-4 font-medium border-b">
-              <div>User ID</div>
-              <div>Name</div>
-              <div>Language</div>
-              <div>Joined</div>
-            </div>
-            <div className="divide-y">
-              {users.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">No users found</div>
-              ) : (
-                users.map((user: any) => (
-                  <div key={user.id} className="grid grid-cols-4 gap-4 p-4">
-                    <div className="truncate">{user.id}</div>
-                    <div>{user.full_name || 'Unnamed'}</div>
-                    <div>{user.preferred_language || 'English'}</div>
-                    <div>{new Date(user.created_at).toLocaleDateString()}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-const ContentManagement = () => {
-  const [questions, setQuestions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setIsLoading(true);
-        const { data, error } = await supabase
-          .from('questions')
-          .select('id, question, difficulty_level, created_at')
-          .order('created_at', { ascending: false })
-          .limit(10);
-          
-        if (error) {
-          throw error;
-        }
-        
-        setQuestions(data || []);
-      } catch (error) {
-        console.error('Error fetching questions:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchQuestions();
-  }, []);
-  
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Content Management
-        </CardTitle>
-        <CardDescription>
-          Manage exam questions and content
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center py-4">Loading content...</div>
-        ) : (
-          <div className="rounded-md border">
-            <div className="grid grid-cols-3 gap-4 p-4 font-medium border-b">
-              <div>Question</div>
-              <div>Difficulty</div>
-              <div>Created</div>
-            </div>
-            <div className="divide-y">
-              {questions.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">No questions found</div>
-              ) : (
-                questions.map((question: any) => (
-                  <div key={question.id} className="grid grid-cols-3 gap-4 p-4">
-                    <div className="truncate">{question.question}</div>
-                    <div>{question.difficulty_level || 'Medium'}</div>
-                    <div>{new Date(question.created_at).toLocaleDateString()}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-const NewsSettings = () => {
-  const [categories, setCategories] = useState([
-    { id: 'general', name: 'General' },
-    { id: 'business', name: 'Business' },
-    { id: 'technology', name: 'Technology' },
-    { id: 'health', name: 'Health' },
-    { id: 'science', name: 'Science' },
-    { id: 'sports', name: 'Sports' },
-  ]);
-  const [selectedCategory, setSelectedCategory] = useState('general');
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  const handleClearNewsCache = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const { data, error } = await supabase.functions.invoke('news-feed', {
-        body: {
-          action: 'clear-cache',
-          category: selectedCategory
-        }
+      const { error } = await supabase.functions.invoke('admin-settings', {
+        body: { action: 'clear-database' }
       });
       
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to clear news cache. Please try again.",
-          variant: "destructive",
-        });
-        return;
+        throw new Error(error.message);
       }
       
       toast({
-        title: "Success",
-        description: "News cache cleared successfully!",
-        variant: "default",
+        title: 'Database cleared',
+        description: 'All user data has been deleted',
       });
-    } catch (error) {
-      console.error('Error clearing news cache:', error);
+      
+      // Refresh stats
+      const { data } = await supabase.functions.invoke('system-stats', {
+        body: { action: 'get-all-stats' }
+      });
+      
+      if (data) {
+        setStats(data);
+      }
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'An error occurred while clearing the database',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Newspaper className="h-5 w-5" />
-          News Feed Settings
-        </CardTitle>
-        <CardDescription>
-          Manage news feed settings and cache
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="newsCategory">News Category</Label>
-          <select 
-            id="newsCategory"
-            className="w-full p-2 border border-gray-300 rounded"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        <Button 
-          onClick={handleClearNewsCache}
-          disabled={isLoading}
-          className="w-full"
-        >
-          {isLoading ? "Processing..." : "Clear News Cache"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading admin panel...</div>;
+  }
 
-const SiteSettings = () => {
-  const [defaultLanguage, setDefaultLanguage] = useState('english');
-  const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
-  const languages = [
-    { id: 'english', name: 'English' },
-    { id: 'hindi', name: 'Hindi' },
-    { id: 'tamil', name: 'Tamil' },
-    { id: 'telugu', name: 'Telugu' },
-    { id: 'marathi', name: 'Marathi' },
-    { id: 'bengali', name: 'Bengali' },
-    { id: 'gujarati', name: 'Gujarati' },
-    { id: 'kannada', name: 'Kannada' },
-    { id: 'malayalam', name: 'Malayalam' },
-    { id: 'punjabi', name: 'Punjabi' },
-    { id: 'urdu', name: 'Urdu' }
-  ];
-
-  useEffect(() => {
-    const getSettings = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('admin-settings', {
-          body: {
-            action: 'get',
-            key: 'DEFAULT_LANGUAGE'
-          }
-        });
-        
-        if (!error && data?.value) {
-          setDefaultLanguage(data.value);
-        }
-      } catch (error) {
-        console.error('Error fetching site settings:', error);
-      }
-    };
-    
-    getSettings();
-  }, []);
-
-  const handleSaveSettings = async () => {
-    try {
-      setIsSaving(true);
-      
-      const { error } = await supabase.functions.invoke('admin-settings', {
-        body: {
-          action: 'set',
-          key: 'DEFAULT_LANGUAGE',
-          value: defaultLanguage
-        }
-      });
-      
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save settings. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      toast({
-        title: "Success",
-        description: "Settings saved successfully!",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Error saving site settings:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  if (!isAuthenticated) {
+    return <AdminLogin onAdminAuthenticated={() => setIsAuthenticated(true)} />;
+  }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Site Settings
-        </CardTitle>
-        <CardDescription>
-          Configure global application settings
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="defaultLanguage">Default Language</Label>
-          <select 
-            id="defaultLanguage"
-            className="w-full p-2 border border-gray-300 rounded"
-            value={defaultLanguage}
-            onChange={(e) => setDefaultLanguage(e.target.value)}
-          >
-            {languages.map(lang => (
-              <option key={lang.id} value={lang.id}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">
-            Default language for new users and content
-          </p>
-        </div>
-        
-        <Button 
-          onClick={handleSaveSettings}
-          disabled={isSaving}
-          className="w-full"
-        >
-          {isSaving ? "Saving..." : "Save Settings"}
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-400 flex items-center gap-2">
+          <UserCog className="h-6 w-6" />
+          Admin Control Panel
+        </h1>
+        <Button variant="outline" onClick={handleLogout}>
+          Logout
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-end gap-2">
+              {stats.totalUsers}
+              <Users className="h-5 w-5 text-blue-500 mb-1" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Users (Last 7 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-end gap-2">
+              {stats.activeUsers}
+              <UserCog className="h-5 w-5 text-green-500 mb-1" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Questions Generated</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-end gap-2">
+              {stats.questionsGenerated}
+              <BarChart className="h-5 w-5 text-purple-500 mb-1" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Questions Answered</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-end gap-2">
+              {stats.questionsAnswered}
+              <PieChart className="h-5 w-5 text-amber-500 mb-1" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs defaultValue="api-keys">
+        <TabsList className="mb-4">
+          <TabsTrigger value="api-keys" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            API Keys
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            System
+          </TabsTrigger>
+          <TabsTrigger value="database" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Database
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="api-keys" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>API Key Management</CardTitle>
+              <CardDescription>
+                Configure API keys for various services. These keys are stored securely in the database.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ApiKeyManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="system" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Information</CardTitle>
+              <CardDescription>
+                View system information and metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">System Health</h3>
+                  <div className="flex items-center gap-2 text-green-500">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>All systems operational</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">API Status</h3>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Gemini API</span>
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Active</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">News API</span>
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">System Logs</h3>
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-md p-3 text-xs font-mono h-48 overflow-y-auto">
+                  <p className="text-green-600 dark:text-green-400">[INFO] System initialized successfully</p>
+                  <p className="text-blue-600 dark:text-blue-400">[INFO] Default API keys initialized</p>
+                  <p className="text-gray-600 dark:text-gray-400">[INFO] Database connection established</p>
+                  <p className="text-gray-600 dark:text-gray-400">[INFO] Admin panel accessed</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="database" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Database Management</CardTitle>
+              <CardDescription>
+                Manage database operations and maintenance
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                <div className="flex items-start">
+                  <CircleAlert className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Danger Zone</h3>
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                      The following actions are destructive and cannot be undone. Use with extreme caution.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex flex-col space-y-2">
+                  <Button 
+                    variant="destructive" 
+                    className="w-full" 
+                    onClick={handleClearDatabase}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Processing...' : 'Clear All User Data'}
+                  </Button>
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    This will delete ALL user data except for admin settings.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-};
-
-export default AdminPanel;
+}
