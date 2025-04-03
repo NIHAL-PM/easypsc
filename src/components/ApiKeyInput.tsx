@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { KeyIcon, AlertCircle } from 'lucide-react';
-import { isGeminiApiKeyConfigured } from '@/lib/env';
+import { saveApiKey } from '@/lib/api-key';
 
 interface ApiKeyInputProps {
   onApiKeySubmit: (apiKey: string) => void;
@@ -16,7 +16,7 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!apiKey.trim()) {
@@ -28,17 +28,24 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
       return;
     }
     
-    // In a production app, we would validate the key format here
-    
-    // Store the key in localStorage for persistence
-    localStorage.setItem('GEMINI_API_KEY', apiKey);
-    
-    onApiKeySubmit(apiKey);
-    
-    toast({
-      title: 'API Key Saved',
-      description: 'Your Gemini API key has been saved.'
-    });
+    try {
+      // Save API key to both localStorage and Supabase
+      await saveApiKey('GEMINI_API_KEY', apiKey);
+      
+      onApiKeySubmit(apiKey);
+      
+      toast({
+        title: 'API Key Saved',
+        description: 'Your Gemini API key has been saved.'
+      });
+    } catch (error) {
+      console.error('Error saving API key:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save API key. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (

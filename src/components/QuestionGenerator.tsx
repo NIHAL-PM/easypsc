@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
-import { isGeminiApiKeyConfigured } from '@/lib/env';
+import { isGeminiApiKeyConfigured } from '@/lib/api-key';
 import { useQuestionStore } from '@/services/questionStore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -39,9 +38,7 @@ const QuestionGenerator = () => {
   
   const [difficulty, setDifficulty] = useState('medium');
   const [language, setLanguage] = useState('english');
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
-    return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
-  });
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   
   const languages = [
     { id: 'english', name: 'English' },
@@ -58,7 +55,15 @@ const QuestionGenerator = () => {
   ];
   
   useEffect(() => {
-    // If user has a preferred language, use it
+    const checkApiKey = async () => {
+      const geminiKeyConfigured = isGeminiApiKeyConfigured();
+      setApiKeyConfigured(geminiKeyConfigured);
+    };
+    
+    checkApiKey();
+  }, []);
+  
+  useEffect(() => {
     if (user?.preferredLanguage) {
       setLanguage(user.preferredLanguage);
     }
@@ -68,7 +73,6 @@ const QuestionGenerator = () => {
     setApiKeyConfigured(true);
   };
   
-  // Function to check if enough time has passed since last question generation
   const canGenerateNewQuestions = () => {
     if (!user) return true;
     
@@ -85,7 +89,6 @@ const QuestionGenerator = () => {
   const handleGenerateQuestions = async () => {
     if (!user) return;
     
-    // Check if API key is configured
     if (!apiKeyConfigured) {
       toast({
         title: "API Key Required",
@@ -95,7 +98,6 @@ const QuestionGenerator = () => {
       return;
     }
     
-    // Check if non-premium user has questions remaining
     if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
       toast({
         title: "Question limit reached",
@@ -103,7 +105,6 @@ const QuestionGenerator = () => {
         variant: "destructive"
       });
       
-      // Prompt to upgrade
       const shouldUpgrade = window.confirm("Would you like to upgrade to premium for unlimited questions?");
       if (shouldUpgrade) {
         navigate("/premium");
@@ -111,7 +112,6 @@ const QuestionGenerator = () => {
       return;
     }
     
-    // Check if we need to enforce a cooldown period
     if (askedQuestionIds.length >= 10 && !canGenerateNewQuestions()) {
       const lastTime = new Date(user.lastQuestionTime || 0);
       const waitTimeMinutes = Math.ceil((10 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
@@ -127,21 +127,19 @@ const QuestionGenerator = () => {
     setIsLoading(true);
     
     try {
-      // Track user action
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
         difficulty,
         language
       });
       
-      // Generate 5 questions for premium, or limited questions for free users
       const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
         difficulty: difficulty as any,
         count,
-        askedQuestionIds, // Pass the IDs of questions that have already been asked
+        askedQuestionIds,
         language
       });
       
@@ -155,9 +153,7 @@ const QuestionGenerator = () => {
         return;
       }
       
-      // Store the new questions in the question store for admin access
       generatedQuestions.forEach(question => {
-        // Only add if it doesn't already exist in customQuestions
         if (!customQuestions.some(q => q.id === question.id)) {
           useQuestionStore.getState().addQuestion(question);
         }
@@ -165,11 +161,8 @@ const QuestionGenerator = () => {
       
       setQuestions(generatedQuestions);
       
-      // Set the first question as current
       if (generatedQuestions.length > 0) {
         setCurrentQuestion(generatedQuestions[0]);
-        
-        // Update the last question time
         setLastQuestionTime(new Date().getTime());
         
         toast({

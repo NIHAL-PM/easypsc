@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ExamType, Question, QuestionDifficulty, User } from '@/types';
+import { getApiKey } from '@/lib/api-key';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -281,7 +282,7 @@ export const saveApiKey = async (key: string, value: string) => {
   }
 };
 
-// Helper function to get API keys
+// Helper function to get API keys 
 export const getApiKey = async (key: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('admin-settings', {

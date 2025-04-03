@@ -10,8 +10,7 @@ import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
-import { isGeminiApiKeyConfigured } from "./lib/api-key";
-import { initializeDefaultApiKeys } from "./lib/api-key";
+import { isGeminiApiKeyConfigured, initializeDefaultApiKeys } from "./lib/api-key";
 
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

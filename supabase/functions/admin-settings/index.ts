@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.1.1';
 
@@ -6,18 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface AdminRequestParams {
-  action: string;
-  key?: string;
-  value?: string;
-  username?: string;
-  password?: string;
+// Helper function to ensure the settings table exists
+async function ensureSettingsTable(supabaseAdmin: any) {
+  try {
+    // Check if the settings table exists
+    const { error: checkError } = await supabaseAdmin.from('settings').select('count(*)').limit(1);
+    
+    // Create the table if it doesn't exist
+    if (checkError && checkError.code === 'PGRST116') {
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS public.settings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          key TEXT UNIQUE NOT NULL,
+          value TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+        );
+      `;
+      
+      // Execute raw SQL to create the table
+      const { error: createError } = await supabaseAdmin.rpc('execute_sql', { query: createTableQuery });
+      if (createError) {
+        console.error('Error creating settings table:', createError);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error ensuring settings table exists:', error);
+    return false;
+  }
 }
-
-const ADMIN_CREDENTIALS = {
-  username: 'bluewaterbottle',
-  password: 'waterbottle'
-};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -34,82 +54,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
+    // Ensure settings table exists
+    await ensureSettingsTable(supabaseAdmin);
+    
     // Parse request
-    const params: AdminRequestParams = await req.json();
-    const { action, key, value, username, password } = params;
+    const { action, key, value } = await req.json();
     
-    // Validate admin credentials for certain actions
-    if (action === 'set' || action === 'delete' || action === 'clear-database') {
-      // Check if the provided credentials match the admin credentials
-      if (username && password) {
-        if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
-          return new Response(
-            JSON.stringify({
-              status: 'error',
-              message: 'Unauthorized'
-            }),
-            {
-              status: 401,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            }
-          );
-        }
-      } else {
-        // If no credentials were provided, check if the request is from the admin panel
-        // This is not ideal security, but sufficient for this demo
-        const adminAuth = req.headers.get('x-admin-auth');
-        if (!adminAuth || adminAuth !== 'true') {
-          return new Response(
-            JSON.stringify({
-              status: 'error',
-              message: 'Unauthorized'
-            }),
-            {
-              status: 401,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            }
-          );
-        }
-      }
-    }
-    
-    if (action === 'set' && key && value !== undefined) {
-      // First check if the setting already exists
-      const { data: existingData, error: existingError } = await supabaseAdmin
-        .from('settings')
-        .select('id')
-        .eq('key', key)
-        .single();
-      
-      if (existingError && existingError.code !== 'PGRST116') {
-        throw new Error(`Error checking setting: ${existingError.message}`);
-      }
-      
-      // If the setting exists, update it; otherwise, insert a new record
-      const { error: upsertError } = await supabaseAdmin
-        .from('settings')
-        .upsert({
-          id: existingData?.id,
-          key,
-          value,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (upsertError) {
-        throw new Error(`Error saving setting: ${upsertError.message}`);
-      }
-      
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: 'Setting saved successfully'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    } else if (action === 'get' && key) {
-      // Get a setting by key
+    if (action === 'get') {
+      // Get a setting
       const { data, error } = await supabaseAdmin
         .from('settings')
         .select('value')
@@ -117,69 +69,43 @@ serve(async (req) => {
         .single();
       
       if (error && error.code !== 'PGRST116') {
-        throw new Error(`Error getting setting: ${error.message}`);
+        console.error(`Error getting setting ${key}:`, error);
+        throw new Error(`Unable to retrieve setting: ${key}`);
       }
       
       return new Response(
         JSON.stringify({
-          status: 'success',
           value: data?.value || null
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-    } else if (action === 'delete' && key) {
-      // Delete a setting by key
-      const { error } = await supabaseAdmin
+    } else if (action === 'set') {
+      // Upsert (insert or update) a setting
+      const { data, error } = await supabaseAdmin
         .from('settings')
-        .delete()
-        .eq('key', key);
+        .upsert(
+          { key, value },
+          { onConflict: 'key' }
+        );
       
       if (error) {
-        throw new Error(`Error deleting setting: ${error.message}`);
+        console.error(`Error setting ${key}:`, error);
+        throw new Error(`Unable to set setting: ${key}`);
       }
       
       return new Response(
         JSON.stringify({
-          status: 'success',
-          message: 'Setting deleted successfully'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    } else if (action === 'verify-admin') {
-      // Verify admin credentials
-      const isValidAdmin = username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password;
-      
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          isValidAdmin
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    } else if (action === 'clear-database') {
-      // Dangerous action to clear user data (except settings)
-      // In a real app, you'd want more safeguards here
-      
-      // Clear users, questions, etc. but keep settings
-      // This is just a placeholder for now
-      
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          message: 'Database cleared (placeholder - no actual deletion performed)'
+          success: true,
+          message: `Setting ${key} updated successfully`
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     } else {
-      throw new Error('Invalid action or missing parameters');
+      throw new Error('Invalid action');
     }
   } catch (error) {
     console.error('Admin-settings function error:', error);

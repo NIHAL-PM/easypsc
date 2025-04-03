@@ -9,6 +9,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to ensure the settings table exists
+async function ensureSettingsTable(supabaseAdmin: any) {
+  try {
+    // Check if the settings table exists
+    const { error: checkError } = await supabaseAdmin.from('settings').select('count(*)').limit(1);
+    
+    // Create the table if it doesn't exist
+    if (checkError && checkError.code === 'PGRST116') {
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS public.settings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          key TEXT UNIQUE NOT NULL,
+          value TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+        );
+      `;
+      
+      // Execute raw SQL to create the table
+      const { error: createError } = await supabaseAdmin.rpc('execute_sql', { query: createTableQuery });
+      if (createError) {
+        console.error('Error creating settings table:', createError);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error ensuring settings table exists:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -24,16 +56,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
+    // Ensure settings table exists
+    await ensureSettingsTable(supabaseAdmin);
+    
     // Get Gemini API key from settings
     const { data: keyData, error: keyError } = await supabaseAdmin
-      .rpc('get_setting_value', { setting_key: 'GEMINI_API_KEY' });
+      .from('settings')
+      .select('value')
+      .eq('key', 'GEMINI_API_KEY')
+      .single();
     
-    if (keyError) {
+    if (keyError && keyError.code !== 'PGRST116') {
       console.error('Error getting GEMINI_API_KEY:', keyError);
       throw new Error('Unable to retrieve API key');
     }
     
-    const GEMINI_API_KEY = keyData || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
+    const GEMINI_API_KEY = keyData?.value || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
     
     // Initialize the Google Generative AI
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
