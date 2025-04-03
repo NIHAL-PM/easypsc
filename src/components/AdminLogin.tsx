@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Lock, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface AdminLoginProps {
   onAdminAuthenticated: () => void;
@@ -16,6 +17,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onAdminAuthenticated }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +30,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onAdminAuthenticated }) => {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       // Set admin authenticated flag in localStorage
       localStorage.setItem('isAdminAuthenticated', 'true');
+      localStorage.setItem('adminAuthTime', new Date().getTime().toString());
       
       toast({
         title: 'Admin access granted',
@@ -46,15 +49,29 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onAdminAuthenticated }) => {
     }
   };
 
+  const handleBackToHome = () => {
+    navigate('/');
+  };
+
   return (
     <div className="flex items-center justify-center min-h-[400px]">
       <Card className="w-full max-w-md border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm relative">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-amber-500 to-orange-500"></div>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-            <Shield className="h-5 w-5 text-amber-500" />
-            Admin Authentication
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <Shield className="h-5 w-5 text-amber-500" />
+              Admin Authentication
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleBackToHome}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Back to Home
+            </Button>
+          </div>
           <CardDescription>
             Please enter your administrator credentials to continue
           </CardDescription>

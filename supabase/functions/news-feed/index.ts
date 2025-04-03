@@ -113,16 +113,18 @@ serve(async (req) => {
       if (query) {
         // Everything endpoint for custom queries
         const date = new Date();
-        date.setDate(date.getDate() - 7); // Last 7 days
+        date.setDate(date.getDate() - 1); // Last 24 hours for more real-time news
         const fromDate = date.toISOString().split('T')[0];
         
         apiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${fromDate}&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`;
       } else {
-        // Top headlines by category
-        apiUrl = `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&apiKey=${NEWS_API_KEY}`;
+        // Top headlines by category - using pageSize=20 for more results
+        apiUrl = `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&apiKey=${NEWS_API_KEY}`;
       }
       
       try {
+        console.log(`Fetching news from: ${apiUrl.replace(NEWS_API_KEY, 'API_KEY_HIDDEN')}`);
+        
         // Fetch news from external API
         const response = await fetch(apiUrl);
         
@@ -133,6 +135,7 @@ serve(async (req) => {
         }
         
         const newsData = await response.json();
+        console.log(`Received ${newsData.articles?.length || 0} news articles`);
         
         if (newsData.status !== 'ok') {
           throw new Error(newsData.message || 'Failed to fetch news');

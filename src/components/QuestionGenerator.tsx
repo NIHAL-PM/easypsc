@@ -30,7 +30,8 @@ const QuestionGenerator = () => {
     setIsLoading, 
     isLoading, 
     askedQuestionIds,
-    setLastQuestionTime
+    setLastQuestionTime,
+    setPreferredLanguage 
   } = useAppStore();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ const QuestionGenerator = () => {
   const [language, setLanguage] = useState('english');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
   
   const languages = [
     { id: 'english', name: 'English' },
@@ -57,12 +59,15 @@ const QuestionGenerator = () => {
   
   useEffect(() => {
     const checkApiKey = async () => {
+      setIsCheckingApiKey(true);
       try {
         const geminiKey = await getApiKey('GEMINI_API_KEY');
         setApiKeyConfigured(!!geminiKey);
       } catch (error) {
         console.error('Error checking API key:', error);
         setApiKeyConfigured(false);
+      } finally {
+        setIsCheckingApiKey(false);
       }
     };
     
@@ -79,6 +84,13 @@ const QuestionGenerator = () => {
     setApiKeyConfigured(true);
   };
   
+  const handleLanguageChange = (value: string) => {
+    setLanguage(value);
+    if (user) {
+      setPreferredLanguage(value);
+    }
+  };
+  
   const canGenerateNewQuestions = () => {
     if (!user) return true;
     
@@ -87,7 +99,7 @@ const QuestionGenerator = () => {
     
     const now = new Date().getTime();
     const timeSinceLastQuestion = now - lastQuestionTime;
-    const minWaitTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+    const minWaitTime = 5 * 60 * 1000; // 5 minutes in milliseconds (reduced from 10)
     
     return timeSinceLastQuestion > minWaitTime;
   };
@@ -122,7 +134,7 @@ const QuestionGenerator = () => {
     
     if (askedQuestionIds.length >= 10 && !canGenerateNewQuestions()) {
       const lastTime = new Date(user.lastQuestionTime || 0);
-      const waitTimeMinutes = Math.ceil((10 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
+      const waitTimeMinutes = Math.ceil((5 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
       
       toast({
         title: "Cooldown period",
@@ -166,7 +178,7 @@ const QuestionGenerator = () => {
         setGenerationError('No questions were generated. Please try a different difficulty level or exam type.');
         toast({
           title: 'No questions generated',
-          description: 'Try changing the difficulty or exam type to get new questions.',
+          description: 'Try changing the difficulty, exam type, or language to get new questions.',
           variant: "destructive"
         });
         return;
@@ -187,7 +199,7 @@ const QuestionGenerator = () => {
         
         toast({
           title: 'Questions generated',
-          description: `${generatedQuestions.length} questions ready for practice.`,
+          description: `${generatedQuestions.length} questions ready for practice in ${language}.`,
         });
       }
     } catch (error) {
@@ -202,6 +214,17 @@ const QuestionGenerator = () => {
       setIsLoading(false);
     }
   };
+  
+  if (isCheckingApiKey) {
+    return (
+      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
+        <div className="p-6 flex flex-col items-center justify-center min-h-[300px]">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+          <p className="text-center text-muted-foreground">Checking API configuration...</p>
+        </div>
+      </Card>
+    );
+  }
   
   if (!apiKeyConfigured) {
     return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
@@ -296,7 +319,7 @@ const QuestionGenerator = () => {
               </Label>
               <Select 
                 value={language}
-                onValueChange={setLanguage}
+                onValueChange={handleLanguageChange}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select language" />

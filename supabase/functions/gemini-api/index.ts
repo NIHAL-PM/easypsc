@@ -83,7 +83,7 @@ serve(async (req) => {
         );
       }
       
-      GEMINI_API_KEY = keyData?.value || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
+      GEMINI_API_KEY = keyData?.value || null;
     }
     
     if (!GEMINI_API_KEY) {
@@ -107,6 +107,8 @@ serve(async (req) => {
     
     if (action === 'generate-questions') {
       const { examType, difficulty, count = 5, askedQuestionIds = [], language = 'english' } = requestParams;
+      
+      console.log(`Generating questions: examType=${examType}, difficulty=${difficulty}, language=${language}, count=${count}`);
       
       // Create a system prompt for generating questions based on exam type and difficulty
       let systemPrompt = `Generate ${count} multiple choice questions for ${examType} exam preparation at ${difficulty} difficulty level. `;
@@ -142,26 +144,59 @@ serve(async (req) => {
       `;
       
       try {
+        console.log("Sending request to Gemini API");
         const result = await model.generateContent(systemPrompt);
         const response = await result.response;
         const responseText = response.text();
+        console.log("Received response from Gemini API");
         
         // Try to parse the response as JSON
         let questionsArray;
         try {
-          // Try to parse the response as JSON directly
-          questionsArray = JSON.parse(responseText);
+          // Try to extract JSON from various formats
+          const jsonRegex = /(\[[\s\S]*?\])/g;
+          const jsonMatches = [...responseText.matchAll(jsonRegex)];
           
-          // Check if the response is wrapped in a code block (```json ... ```)
-          if (!Array.isArray(questionsArray)) {
-            // Extract JSON from markdown code blocks if present
-            const jsonMatch = responseText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-            if (jsonMatch && jsonMatch[1]) {
-              questionsArray = JSON.parse(jsonMatch[1]);
-            } else {
-              // If we can't extract a JSON array, throw an error
-              throw new Error('Could not parse response as JSON array');
+          // Try all potential JSON matches
+          for (const match of jsonMatches) {
+            try {
+              const potentialJson = match[0];
+              const parsed = JSON.parse(potentialJson);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                questionsArray = parsed;
+                break;
+              }
+            } catch (e) {
+              // Continue to next match
             }
+          }
+          
+          // If still no valid JSON, try one more approach
+          if (!questionsArray) {
+            // Extract JSON from markdown code blocks if present
+            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+              try {
+                questionsArray = JSON.parse(jsonMatch[1]);
+              } catch (e) {
+                console.error('Failed to parse JSON from code block:', e);
+              }
+            }
+          }
+          
+          // Last resort - try to parse the entire response
+          if (!questionsArray) {
+            try {
+              questionsArray = JSON.parse(responseText);
+            } catch (e) {
+              console.error('Failed to parse entire response as JSON:', e);
+            }
+          }
+          
+          // If we still can't extract a JSON array, throw an error
+          if (!questionsArray || !Array.isArray(questionsArray)) {
+            console.error('Raw response that could not be parsed:', responseText);
+            throw new Error('Could not parse response as JSON array');
           }
         } catch (parseError) {
           console.error('Error parsing Gemini response:', parseError);
@@ -179,31 +214,42 @@ serve(async (req) => {
           );
         }
         
-        // Ensure each question has a valid id
+        // Ensure each question has a valid id and correct structure
         questionsArray = questionsArray.map(q => ({
-          ...q,
-          id: q.id || uuidv4()
+          id: q.id || uuidv4(),
+          text: q.text || q.question || `Question ${uuidv4().substring(0, 8)}`,
+          options: q.options || ["Option A", "Option B", "Option C", "Option D"],
+          correctOption: typeof q.correctOption === 'number' ? q.correctOption : 0,
+          explanation: q.explanation || "No explanation provided",
+          category: q.category || examType,
+          difficulty: q.difficulty || difficulty
         }));
+        
+        console.log(`Successfully processed ${questionsArray.length} questions`);
         
         // Save questions to database for re-use
         if (questionsArray.length > 0) {
           for (const question of questionsArray) {
-            // Check if the question already exists by doing an upsert operation
-            const { error: upsertError } = await supabaseAdmin
-              .from('questions')
-              .upsert({
-                id: question.id,
-                question: question.text,
-                options: question.options,
-                correct_answer: question.options[question.correctOption],
-                explanation: question.explanation,
-                tags: [question.category],
-                difficulty_level: question.difficulty,
-                exam_category_id: null // This would need to be mapped to an actual category ID
-              });
-              
-            if (upsertError) {
-              console.error('Error saving question:', upsertError);
+            try {
+              // Check if the question already exists by doing an upsert operation
+              const { error: upsertError } = await supabaseAdmin
+                .from('questions')
+                .upsert({
+                  id: question.id,
+                  question: question.text,
+                  options: question.options,
+                  correct_answer: question.options[question.correctOption],
+                  explanation: question.explanation,
+                  tags: [question.category],
+                  difficulty_level: question.difficulty,
+                  exam_category_id: null // This would need to be mapped to an actual category ID
+                });
+                
+              if (upsertError) {
+                console.error('Error saving question:', upsertError);
+              }
+            } catch (err) {
+              console.error('Error in question upsert:', err);
             }
           }
         }
@@ -233,10 +279,12 @@ serve(async (req) => {
       const { prompt } = requestParams;
       
       try {
+        console.log("Generating chat response for prompt:", prompt.substring(0, 50) + "...");
         // Simple chat generation
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const chatResponse = response.text();
+        console.log("Chat response generated successfully");
         
         return new Response(
           JSON.stringify({

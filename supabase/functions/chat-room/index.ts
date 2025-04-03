@@ -42,7 +42,8 @@ serve(async (req) => {
               message TEXT NOT NULL,
               created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
             );
-            ALTER TABLE public.chat_messages ENABLE REPLICA IDENTITY FULL;
+            ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.chat_messages REPLICA IDENTITY FULL;
           `;
           
           // Execute raw SQL to create the table

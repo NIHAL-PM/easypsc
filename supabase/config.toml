@@ -1,19 +1,43 @@
 
 project_id = "zwtfvwfluoebddezbjqe"
 
+[api]
+enabled = true
+port = 54321
+swagger = true
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
 [functions]
-  [functions.admin-settings]
-    verify_jwt = false
-  [functions.news-feed]
-    verify_jwt = false
-  [functions.gemini-api]
-    verify_jwt = false
-  [functions.chat-room]
-    verify_jwt = false
-  [functions.system-stats]
-    verify_jwt = false
-  [functions.track-activity]
-    verify_jwt = false
-    
-[database]
-  functions_path = "supabase/migrations"
+[functions.gemini-api]
+verify_jwt = false
+
+[functions.chat-room]
+verify_jwt = false
+
+[functions.news-feed]  
+verify_jwt = false
+
+[functions.track-activity]
+verify_jwt = false
+
+[functions.admin-settings]
+verify_jwt = false
+
+[functions.system-stats]
+verify_jwt = false
+
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true

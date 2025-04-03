@@ -12,6 +12,32 @@ import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
 import { getApiKey, saveApiKey } from "./services/api";
 
+// Check if admin is authenticated
+const isAdminAuthenticated = () => {
+  const authStatus = localStorage.getItem('isAdminAuthenticated');
+  const authTime = parseInt(localStorage.getItem('adminAuthTime') || '0', 10);
+  const now = new Date().getTime();
+  const hoursPassed = (now - authTime) / (1000 * 60 * 60);
+  
+  // Admin session expires after 2 hours
+  if (hoursPassed > 2) {
+    localStorage.removeItem('isAdminAuthenticated');
+    localStorage.removeItem('adminAuthTime');
+    return false;
+  }
+  
+  return authStatus === 'true';
+};
+
+// Admin route protection
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  if (!isAdminAuthenticated()) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAppStore();
@@ -32,22 +58,14 @@ const App = () => {
       try {
         console.log('Initializing default API keys...');
         
-        // Default API keys for development only
-        const DEFAULT_API_KEYS = {
-          GEMINI_API_KEY: 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik',
-          NEWS_API_KEY: '7c64a4f4675a425ebe9fc4895fc6e273'
-        };
-        
         // Check if keys are already in localStorage or Supabase
-        for (const [key, defaultValue] of Object.entries(DEFAULT_API_KEYS)) {
-          // Try to get from localStorage or Supabase
-          const existingValue = await getApiKey(key);
-          
-          if (!existingValue) {
-            // Set default if not found
-            await saveApiKey(key, defaultValue);
-            console.log(`Set default ${key}`);
-          }
+        const geminiKey = await getApiKey('GEMINI_API_KEY');
+        const newsApiKey = await getApiKey('NEWS_API_KEY');
+        
+        // Set default news API key if not found
+        if (!newsApiKey) {
+          await saveApiKey('NEWS_API_KEY', '7c64a4f4675a425ebe9fc4895fc6e273');
+          console.log('Set default NEWS_API_KEY');
         }
         
         console.log('API keys initialized');
@@ -109,7 +127,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/premium" element={<PremiumUpgrade />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
