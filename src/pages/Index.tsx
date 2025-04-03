@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -57,10 +56,10 @@ const Index = () => {
             // Set user in our app state
             setUser({
               id: data.session.user.id,
-              name: profileData.full_name || 'User',
+              name: profileData?.full_name || 'User',
               email: data.session.user.email || '',
-              examType: (profileData.preferred_exams?.[0] as ExamType) || 'UPSC',
-              preferredLanguage: profileData.preferred_language || 'english',
+              examType: (profileData?.preferred_exams?.[0] as ExamType) || 'UPSC',
+              preferredLanguage: profileData?.preferred_language || 'english',
               isPremium: false, // This would come from your subscription system
               monthlyQuestionsRemaining: 10,
               questionsAnswered: 0,
@@ -110,10 +109,10 @@ const Index = () => {
           if (profileData) {
             setUser({
               id: session.user.id,
-              name: profileData.full_name || 'User',
+              name: profileData?.full_name || 'User',
               email: session.user.email || '',
-              examType: (profileData.preferred_exams?.[0] as ExamType) || 'UPSC',
-              preferredLanguage: profileData.preferred_language || 'english',
+              examType: (profileData?.preferred_exams?.[0] as ExamType) || 'UPSC',
+              preferredLanguage: profileData?.preferred_language || 'english',
               isPremium: false,
               monthlyQuestionsRemaining: 10,
               questionsAnswered: 0,

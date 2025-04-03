@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ExamType, Question, QuestionDifficulty, User } from '@/types';
 
@@ -256,14 +257,14 @@ export const getUserStats = async (userId: string) => {
     }
     
     return {
-      totalQuestions: data.questions_attempted || 0,
-      correctAnswers: data.questions_correct || 0,
-      accuracyPercentage: data.questions_attempted > 0 
-        ? (data.questions_correct / data.questions_attempted) * 100 
+      totalQuestions: data?.questions_attempted || 0,
+      correctAnswers: data?.questions_correct || 0,
+      accuracyPercentage: data?.questions_attempted && data.questions_attempted > 0 
+        ? ((data.questions_correct || 0) / data.questions_attempted) * 100 
         : 0,
       weakCategories: [], // To be implemented with category tracking
       strongCategories: [], // To be implemented with category tracking
-      streakDays: 0 // To be implemented with streak tracking
+      streakDays: data?.streak_days || 0
     };
   } catch (error) {
     console.error('Error getting user stats:', error);

@@ -280,13 +280,15 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         // Update user profile in Supabase if authenticated
         try {
-          supabase
-            .from('profiles')
-            .update({ preferred_language: language })
-            .eq('id', user.id)
-            .then(({ error }) => {
-              if (error) console.error('Error updating language preference:', error);
-            });
+          if (user.id) {
+            supabase
+              .from('profiles')
+              .update({ preferred_language: language })
+              .eq('id', user.id)
+              .then(({ error }) => {
+                if (error) console.error('Error updating language preference:', error);
+              });
+          }
         } catch (error) {
           console.error('Error updating language preference:', error);
         }

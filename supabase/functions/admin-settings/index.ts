@@ -7,38 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to ensure the settings table exists
-async function ensureSettingsTable(supabaseAdmin: any) {
-  try {
-    // Check if the settings table exists
-    const { error: checkError } = await supabaseAdmin.from('settings').select('count(*)').limit(1);
-    
-    // Create the table if it doesn't exist
-    if (checkError && checkError.code === 'PGRST116') {
-      const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS public.settings (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          key TEXT UNIQUE NOT NULL,
-          value TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-        );
-      `;
-      
-      // Execute raw SQL to create the table
-      const { error: createError } = await supabaseAdmin.rpc('execute_sql', { query: createTableQuery });
-      if (createError) {
-        console.error('Error creating settings table:', createError);
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error ensuring settings table exists:', error);
-    return false;
-  }
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -49,88 +17,119 @@ serve(async (req) => {
   
   try {
     // Create a Supabase client
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-    
-    // Ensure settings table exists
-    await ensureSettingsTable(supabaseAdmin);
-    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Parse the request body
     const { action, key, value } = await req.json();
     
-    if (!key) {
+    // Ensure settings table exists
+    const { error: tableCheckError } = await supabase.from('settings').select('count(*)').limit(1);
+    
+    if (tableCheckError && tableCheckError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS public.settings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          key TEXT UNIQUE NOT NULL,
+          value TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+        );
+      `;
+      
+      const { error: createError } = await supabase.rpc('execute_sql', { query: createTableQuery });
+      if (createError) {
+        console.error('Error creating settings table:', createError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create settings table' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    if (action === 'set') {
+      // Check if key and value are provided
+      if (!key) {
+        return new Response(
+          JSON.stringify({ error: 'Key is required' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Upsert the key-value pair
+      const { error } = await supabase
+        .from('settings')
+        .upsert(
+          { key, value },
+          { onConflict: 'key' }
+        );
+
+      if (error) {
+        console.error('Error setting value:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to set value' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Key is required' }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        JSON.stringify({ success: true }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-    }
-    
-    if (action === 'get') {
-      // Get a setting value
-      const { data, error } = await supabaseAdmin
+    } else if (action === 'get') {
+      // Check if key is provided
+      if (!key) {
+        return new Response(
+          JSON.stringify({ error: 'Key is required' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Get the value for the given key
+      const { data, error } = await supabase
         .from('settings')
         .select('value')
         .eq('key', key)
         .single();
-        
+
       if (error && error.code !== 'PGRST116') {
-        console.error(`Error getting setting for ${key}:`, error);
+        console.error('Error getting value:', error);
         return new Response(
-          JSON.stringify({ error: 'Failed to get setting' }),
-          { 
+          JSON.stringify({ error: 'Failed to get value' }),
+          {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
-      
+
       return new Response(
         JSON.stringify({ value: data?.value || null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } else if (action === 'set') {
-      if (value === undefined) {
-        return new Response(
-          JSON.stringify({ error: 'Value is required for set action' }),
-          { 
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-      
-      // Upsert a setting value
-      const { data, error } = await supabaseAdmin
-        .from('settings')
-        .upsert({ key, value })
-        .select();
-        
-      if (error) {
-        console.error(`Error setting value for ${key}:`, error);
-        return new Response(
-          JSON.stringify({ error: 'Failed to save setting' }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ success: true, data }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
     } else {
       return new Response(
-        JSON.stringify({ error: 'Invalid action specified' }),
-        { 
+        JSON.stringify({ error: 'Invalid action' }),
+        {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -139,9 +138,9 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
-      { 
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
