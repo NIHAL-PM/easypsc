@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { KeyIcon, AlertCircle } from 'lucide-react';
-import { saveApiKey } from '@/lib/api-key';
+import { saveApiKey } from '@/services/api'; // Changed from @/lib/api-key to @/services/api
 
 interface ApiKeyInputProps {
   onApiKeySubmit: (apiKey: string) => void;

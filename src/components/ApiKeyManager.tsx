@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, CheckCircle, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getApiKey, saveApiKey } from '@/lib/api-key';
+import { getApiKey, saveApiKey } from '@/services/api'; // Changed from lib/api-key
 
 interface ApiKeyManagerProps {
   onApiKeyConfigured?: (isConfigured: boolean) => void;

@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/use-toast';
-import { generateQuestions, trackUserActivity } from '@/services/api';
+import { generateQuestions, trackUserActivity, getApiKey } from '@/services/api'; // Updated import
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { 
@@ -18,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
-import { isGeminiApiKeyConfigured } from '@/lib/api-key';
 import { useQuestionStore } from '@/services/questionStore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -56,8 +56,8 @@ const QuestionGenerator = () => {
   
   useEffect(() => {
     const checkApiKey = async () => {
-      const geminiKeyConfigured = isGeminiApiKeyConfigured();
-      setApiKeyConfigured(geminiKeyConfigured);
+      const geminiKey = await getApiKey('GEMINI_API_KEY');
+      setApiKeyConfigured(!!geminiKey);
     };
     
     checkApiKey();

@@ -1,6 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ExamType, Question, QuestionDifficulty, User } from '@/types';
-import { getApiKey } from '@/lib/api-key';
+// Remove this import since we're using our own implementation
+// import { getApiKey } from '@/lib/api-key';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -262,6 +264,10 @@ export const getSystemStats = async () => {
 // Helper function to save API keys
 export const saveApiKey = async (key: string, value: string) => {
   try {
+    // First save to localStorage for immediate use
+    localStorage.setItem(key, value);
+    
+    // Then save to Supabase for persistence
     const { data, error } = await supabase.functions.invoke('admin-settings', {
       body: {
         action: 'set',
@@ -271,7 +277,7 @@ export const saveApiKey = async (key: string, value: string) => {
     });
     
     if (error) {
-      console.error('Error saving API key:', error);
+      console.error('Error saving API key to Supabase:', error);
       return false;
     }
     
@@ -283,8 +289,15 @@ export const saveApiKey = async (key: string, value: string) => {
 };
 
 // Helper function to get API keys 
-export const getApiKey = async (key: string) => {
+export const getApiKey = async (key: string): Promise<string | null> => {
   try {
+    // First check localStorage for immediate access
+    const localValue = localStorage.getItem(key);
+    if (localValue) {
+      return localValue;
+    }
+    
+    // If not in localStorage, try to get from Supabase
     const { data, error } = await supabase.functions.invoke('admin-settings', {
       body: {
         action: 'get',
@@ -293,11 +306,16 @@ export const getApiKey = async (key: string) => {
     });
     
     if (error) {
-      console.error('Error fetching API key:', error);
+      console.error('Error fetching API key from Supabase:', error);
       return null;
     }
     
-    return data.value;
+    // If key found in Supabase, save to localStorage for future use
+    if (data?.value) {
+      localStorage.setItem(key, data.value);
+    }
+    
+    return data?.value || null;
   } catch (error) {
     console.error('Error fetching API key:', error);
     return null;

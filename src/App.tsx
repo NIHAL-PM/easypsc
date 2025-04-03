@@ -10,7 +10,7 @@ import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
-import { isGeminiApiKeyConfigured, initializeDefaultApiKeys } from "./lib/api-key";
+import { getApiKey, saveApiKey } from "./services/api"; // Changed from lib/api-key
 
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -28,6 +28,32 @@ const App = () => {
   
   useEffect(() => {
     // Initialize default API keys if they're not already set
+    const initializeDefaultApiKeys = async () => {
+      try {
+        console.log('Initializing default API keys...');
+        
+        // Default API keys for development only
+        const DEFAULT_API_KEYS = {
+          GEMINI_API_KEY: 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik',
+          NEWS_API_KEY: '7c64a4f4675a425ebe9fc4895fc6e273'
+        };
+        
+        // Check if keys are already in localStorage or Supabase
+        for (const [key, defaultValue] of Object.entries(DEFAULT_API_KEYS)) {
+          // Try to get from localStorage or Supabase
+          const existingValue = await getApiKey(key);
+          
+          if (!existingValue) {
+            // Set default if not found
+            await saveApiKey(key, defaultValue);
+            console.log(`Set default ${key}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing API keys:', error);
+      }
+    };
+    
     initializeDefaultApiKeys()
       .then(() => {
         console.log('API keys initialized');
@@ -37,17 +63,22 @@ const App = () => {
       });
     
     // Check if API key is properly configured
-    if (!isGeminiApiKeyConfigured()) {
-      console.warn("Gemini API key not found. Questions may not load correctly.");
-      // Only show toast if on non-admin page
-      if (!window.location.pathname.includes('/admin')) {
-        toast({
-          title: "API Configuration Needed",
-          description: "Please set up your Gemini API key in the Admin panel or enter it when prompted.",
-          variant: "default",
-        });
+    const checkApiKeyConfigured = async () => {
+      const apiKey = await getApiKey('GEMINI_API_KEY');
+      if (!apiKey) {
+        console.warn("Gemini API key not found. Questions may not load correctly.");
+        // Only show toast if on non-admin page
+        if (!window.location.pathname.includes('/admin')) {
+          toast({
+            title: "API Configuration Needed",
+            description: "Please set up your Gemini API key in the Admin panel or enter it when prompted.",
+            variant: "default",
+          });
+        }
       }
-    }
+    };
+    
+    checkApiKeyConfigured();
 
     // Add event listener for responsive design testing
     const handleResize = () => {
