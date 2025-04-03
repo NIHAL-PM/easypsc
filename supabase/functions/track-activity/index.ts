@@ -20,9 +20,11 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { userId, action, details } = await req.json();
+    const requestBody = await req.json();
+    console.log("Activity tracking request received:", JSON.stringify(requestBody));
+    
+    const { userId, action, details = {} } = requestBody;
 
-    // Validate required parameters
     if (!userId || !action) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: userId and action are required' }),
@@ -30,17 +32,53 @@ serve(async (req) => {
       );
     }
 
-    // Insert the activity
+    // Create helper function to ensure user_activities table exists
+    async function ensureUserActivitiesTable() {
+      try {
+        // Check if the user_activities table exists
+        const { error: checkError } = await supabase.from('user_activities').select('count(*)').limit(1);
+        
+        // Create the table if it doesn't exist
+        if (checkError && checkError.code === 'PGRST116') {
+          const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS public.user_activities (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID NOT NULL,
+              action TEXT NOT NULL,
+              details JSONB,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+            );
+          `;
+          
+          // Execute raw SQL to create the table
+          const { error: createError } = await supabase.rpc('execute_sql', { query: createTableQuery });
+          if (createError) {
+            console.error('Error creating user_activities table:', createError);
+            return false;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error ensuring user_activities table exists:', error);
+        return false;
+      }
+    }
+
+    // Ensure user_activities table exists
+    await ensureUserActivitiesTable();
+
+    // Insert the activity into the user_activities table
     const { data, error } = await supabase
       .from('user_activities')
       .insert({
         user_id: userId,
         action,
-        details: details || {},
+        details
       });
 
     if (error) {
-      console.error('Error tracking activity:', error);
+      console.error('Error saving user activity:', error);
       return new Response(
         JSON.stringify({ error: 'Failed to track activity' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
-import { MessageSquare, Send, UserIcon, Users } from 'lucide-react';
-import { generateChat } from '@/services/api';
+import { MessageSquare, Send, KeyIcon, AlertTriangle } from 'lucide-react';
+import { generateChat, getApiKey } from '@/services/api';
 import { useAppStore } from '@/lib/store';
+import ApiKeyInput from './ApiKeyInput';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -20,6 +22,29 @@ const ChatMode: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        setIsCheckingApiKey(true);
+        const geminiKey = await getApiKey('GEMINI_API_KEY');
+        setApiKeyConfigured(!!geminiKey);
+      } catch (error) {
+        console.error('Error checking API key:', error);
+        setApiKeyConfigured(false);
+      } finally {
+        setIsCheckingApiKey(false);
+      }
+    };
+    
+    checkApiKey();
+  }, []);
+
+  const handleApiKeySubmit = (apiKey: string) => {
+    setApiKeyConfigured(true);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -29,15 +54,18 @@ const ChatMode: React.FC = () => {
     if (!inputValue.trim()) return;
     
     setIsLoading(true);
+    const userMessage = inputValue.trim();
+    
+    // Add user message to chat
     setMessages((prev) => [
       ...prev,
-      { role: 'user', content: inputValue }
+      { role: 'user', content: userMessage }
     ]);
     setInputValue('');
     
     try {
-      // Fixed: generateChat only takes one parameter
-      const response = await generateChat(inputValue);
+      // Call the API
+      const response = await generateChat(userMessage);
       
       if (response) {
         setMessages((prev) => [
@@ -45,21 +73,47 @@ const ChatMode: React.FC = () => {
           { role: 'assistant', content: response }
         ]);
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: "I'm sorry, I couldn't generate a response. Please try again." }
-        ]);
+        throw new Error('Empty response from assistant');
       }
     } catch (error) {
       console.error('Error generating chat response:', error);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "There was an error generating a response. Please try again." }
+        { role: 'assistant', content: "I'm sorry, I encountered an issue generating a response. Please try again." }
       ]);
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to generate a response. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  if (isCheckingApiKey) {
+    return (
+      <Card className="border shadow-md h-[600px] flex items-center justify-center">
+        <CardContent>
+          <p className="text-center text-muted-foreground">
+            Checking API configuration...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!apiKeyConfigured) {
+    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
+  }
 
   return (
     <Card className="border shadow-md h-[600px] flex flex-col">
@@ -105,7 +159,7 @@ const ChatMode: React.FC = () => {
                     }
                   `}
                 >
-                  <p className="text-sm break-words">{msg.content}</p>
+                  <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>
                 </div>
                 
                 {msg.role === 'user' && (
@@ -126,6 +180,7 @@ const ChatMode: React.FC = () => {
           <Input
             value={inputValue}
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             placeholder="Type your message..."
             disabled={isLoading}
             className="flex-1"

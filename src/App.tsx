@@ -10,7 +10,7 @@ import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
-import { getApiKey, saveApiKey } from "./services/api"; // Changed from lib/api-key
+import { getApiKey, saveApiKey } from "./services/api";
 
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -49,18 +49,14 @@ const App = () => {
             console.log(`Set default ${key}`);
           }
         }
+        
+        console.log('API keys initialized');
       } catch (error) {
         console.error('Error initializing API keys:', error);
       }
     };
     
-    initializeDefaultApiKeys()
-      .then(() => {
-        console.log('API keys initialized');
-      })
-      .catch(error => {
-        console.error('Error initializing API keys:', error);
-      });
+    initializeDefaultApiKeys();
     
     // Check if API key is properly configured
     const checkApiKeyConfigured = async () => {

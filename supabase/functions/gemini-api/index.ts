@@ -59,19 +59,44 @@ serve(async (req) => {
     // Ensure settings table exists
     await ensureSettingsTable(supabaseAdmin);
     
-    // Get Gemini API key from settings
-    const { data: keyData, error: keyError } = await supabaseAdmin
-      .from('settings')
-      .select('value')
-      .eq('key', 'GEMINI_API_KEY')
-      .single();
+    // First try to get API key from environment variable
+    let GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     
-    if (keyError && keyError.code !== 'PGRST116') {
-      console.error('Error getting GEMINI_API_KEY:', keyError);
-      throw new Error('Unable to retrieve API key');
+    // If not in environment, try to get from settings table
+    if (!GEMINI_API_KEY) {
+      const { data: keyData, error: keyError } = await supabaseAdmin
+        .from('settings')
+        .select('value')
+        .eq('key', 'GEMINI_API_KEY')
+        .single();
+      
+      if (keyError && keyError.code !== 'PGRST116') {
+        console.error('Error getting GEMINI_API_KEY:', keyError);
+        return new Response(
+          JSON.stringify({
+            error: 'Unable to retrieve API key'
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      GEMINI_API_KEY = keyData?.value || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
     }
     
-    const GEMINI_API_KEY = keyData?.value || 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik'; // Use default if not found
+    if (!GEMINI_API_KEY) {
+      return new Response(
+        JSON.stringify({
+          error: 'Gemini API key not configured'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
     
     // Initialize the Google Generative AI
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -116,24 +141,42 @@ serve(async (req) => {
       Return a JSON array of these question objects. Make sure each question has a unique ID and is not in the list of already asked questions: ${JSON.stringify(askedQuestionIds)}.
       `;
       
-      const result = await model.generateContent(systemPrompt);
-      const response = await result.response;
-      const responseText = response.text();
-      
       try {
-        // Try to parse the response as JSON directly
-        let questionsArray = JSON.parse(responseText);
+        const result = await model.generateContent(systemPrompt);
+        const response = await result.response;
+        const responseText = response.text();
         
-        // Check if the response is wrapped in a code block (```json ... ```)
-        if (!Array.isArray(questionsArray)) {
-          // Extract JSON from markdown code blocks if present
-          const jsonMatch = responseText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-          if (jsonMatch && jsonMatch[1]) {
-            questionsArray = JSON.parse(jsonMatch[1]);
-          } else {
-            // If we can't extract a JSON array, throw an error
-            throw new Error('Could not parse response as JSON array');
+        // Try to parse the response as JSON
+        let questionsArray;
+        try {
+          // Try to parse the response as JSON directly
+          questionsArray = JSON.parse(responseText);
+          
+          // Check if the response is wrapped in a code block (```json ... ```)
+          if (!Array.isArray(questionsArray)) {
+            // Extract JSON from markdown code blocks if present
+            const jsonMatch = responseText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+              questionsArray = JSON.parse(jsonMatch[1]);
+            } else {
+              // If we can't extract a JSON array, throw an error
+              throw new Error('Could not parse response as JSON array');
+            }
           }
+        } catch (parseError) {
+          console.error('Error parsing Gemini response:', parseError);
+          console.log('Raw response:', responseText);
+          
+          return new Response(
+            JSON.stringify({
+              error: 'Failed to parse generated questions',
+              questions: []
+            }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
         }
         
         // Ensure each question has a valid id
@@ -173,13 +216,11 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
-      } catch (parseError) {
-        console.error('Error parsing Gemini response:', parseError);
-        console.log('Raw response:', responseText);
-        
+      } catch (error) {
+        console.error('Error generating questions:', error);
         return new Response(
           JSON.stringify({
-            error: 'Failed to parse generated questions',
+            error: 'Failed to generate questions',
             questions: []
           }),
           {
@@ -191,19 +232,33 @@ serve(async (req) => {
     } else if (action === 'generate-chat') {
       const { prompt } = requestParams;
       
-      // Simple chat generation
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const chatResponse = response.text();
-      
-      return new Response(
-        JSON.stringify({
-          response: chatResponse
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      try {
+        // Simple chat generation
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const chatResponse = response.text();
+        
+        return new Response(
+          JSON.stringify({
+            response: chatResponse
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } catch (error) {
+        console.error('Error generating chat:', error);
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to generate chat response',
+            response: null
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     } else {
       throw new Error('Invalid action');
     }

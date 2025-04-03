@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { KeyIcon, AlertCircle } from 'lucide-react';
-import { saveApiKey } from '@/services/api'; // Changed from @/lib/api-key to @/services/api
+import { saveApiKey, getApiKey } from '@/services/api';
 
 interface ApiKeyInputProps {
   onApiKeySubmit: (apiKey: string) => void;
@@ -14,10 +14,24 @@ interface ApiKeyInputProps {
 
 const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
   const [apiKey, setApiKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Check if API key already exists in localStorage on component mount
+  useEffect(() => {
+    const checkExistingApiKey = async () => {
+      const existingKey = await getApiKey('GEMINI_API_KEY');
+      if (existingKey) {
+        onApiKeySubmit(existingKey);
+      }
+    };
+    
+    checkExistingApiKey();
+  }, [onApiKeySubmit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!apiKey.trim()) {
       toast({
@@ -25,6 +39,7 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
         description: 'Please enter a valid Gemini API key',
         variant: 'destructive'
       });
+      setIsLoading(false);
       return;
     }
     
@@ -32,12 +47,12 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
       // Save API key to both localStorage and Supabase
       await saveApiKey('GEMINI_API_KEY', apiKey);
       
-      onApiKeySubmit(apiKey);
-      
       toast({
         title: 'API Key Saved',
         description: 'Your Gemini API key has been saved.'
       });
+      
+      onApiKeySubmit(apiKey);
     } catch (error) {
       console.error('Error saving API key:', error);
       toast({
@@ -45,6 +60,8 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
         description: 'Failed to save API key. Please try again.',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,7 +101,13 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full">Save API Key</Button>
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Saving...' : 'Save API Key'}
+          </Button>
         </CardFooter>
       </form>
     </Card>

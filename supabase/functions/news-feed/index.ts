@@ -64,19 +64,44 @@ serve(async (req) => {
     // Ensure settings table exists
     await ensureSettingsTable(supabaseAdmin);
     
-    // Get News API key from settings
-    const { data: keyData, error: keyError } = await supabaseAdmin
-      .from('settings')
-      .select('value')
-      .eq('key', 'NEWS_API_KEY')
-      .single();
+    // First try to get API key from environment variable
+    let NEWS_API_KEY = Deno.env.get('NEWS_API_KEY');
     
-    if (keyError && keyError.code !== 'PGRST116') {
-      console.error('Error getting NEWS_API_KEY:', keyError);
-      throw new Error('Unable to retrieve API key');
+    // If not in environment, try to get from settings table
+    if (!NEWS_API_KEY) {
+      const { data: keyData, error: keyError } = await supabaseAdmin
+        .from('settings')
+        .select('value')
+        .eq('key', 'NEWS_API_KEY')
+        .single();
+      
+      if (keyError && keyError.code !== 'PGRST116') {
+        console.error('Error getting NEWS_API_KEY:', keyError);
+        return new Response(
+          JSON.stringify({
+            error: 'Unable to retrieve API key'
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      NEWS_API_KEY = keyData?.value || '7c64a4f4675a425ebe9fc4895fc6e273'; // Use default if not found
     }
     
-    const NEWS_API_KEY = keyData?.value || '7c64a4f4675a425ebe9fc4895fc6e273'; // Use default if not found
+    if (!NEWS_API_KEY) {
+      return new Response(
+        JSON.stringify({
+          error: 'News API key not configured'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
     
     // Parse request
     const params: NewsRequestParams = await req.json();
@@ -97,23 +122,45 @@ serve(async (req) => {
         apiUrl = `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&apiKey=${NEWS_API_KEY}`;
       }
       
-      // Fetch news from external API
-      const response = await fetch(apiUrl);
-      const newsData = await response.json();
-      
-      if (newsData.status !== 'ok') {
-        throw new Error(newsData.message || 'Failed to fetch news');
-      }
-      
-      return new Response(
-        JSON.stringify({
-          status: 'success',
-          articles: newsData.articles || []
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      try {
+        // Fetch news from external API
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('News API error:', response.status, errorText);
+          throw new Error(`News API returned ${response.status}: ${errorText}`);
         }
-      );
+        
+        const newsData = await response.json();
+        
+        if (newsData.status !== 'ok') {
+          throw new Error(newsData.message || 'Failed to fetch news');
+        }
+        
+        return new Response(
+          JSON.stringify({
+            status: 'success',
+            articles: newsData.articles || []
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      } catch (error) {
+        console.error('Error fetching news:', error);
+        return new Response(
+          JSON.stringify({
+            status: 'error',
+            message: error.message || 'Failed to fetch news',
+            articles: []
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     } else {
       throw new Error('Invalid action');
     }
@@ -124,6 +171,7 @@ serve(async (req) => {
       JSON.stringify({
         status: 'error',
         message: error.message || 'An unexpected error occurred',
+        articles: []
       }),
       {
         status: 400,

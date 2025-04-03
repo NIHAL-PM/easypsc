@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/use-toast';
-import { generateQuestions, trackUserActivity, getApiKey } from '@/services/api'; // Updated import
+import { generateQuestions, trackUserActivity, getApiKey } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { 
@@ -39,6 +39,7 @@ const QuestionGenerator = () => {
   const [difficulty, setDifficulty] = useState('medium');
   const [language, setLanguage] = useState('english');
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   
   const languages = [
     { id: 'english', name: 'English' },
@@ -56,8 +57,13 @@ const QuestionGenerator = () => {
   
   useEffect(() => {
     const checkApiKey = async () => {
-      const geminiKey = await getApiKey('GEMINI_API_KEY');
-      setApiKeyConfigured(!!geminiKey);
+      try {
+        const geminiKey = await getApiKey('GEMINI_API_KEY');
+        setApiKeyConfigured(!!geminiKey);
+      } catch (error) {
+        console.error('Error checking API key:', error);
+        setApiKeyConfigured(false);
+      }
     };
     
     checkApiKey();
@@ -88,6 +94,8 @@ const QuestionGenerator = () => {
   
   const handleGenerateQuestions = async () => {
     if (!user) return;
+    
+    setGenerationError(null);
     
     if (!apiKeyConfigured) {
       toast({
@@ -127,13 +135,22 @@ const QuestionGenerator = () => {
     setIsLoading(true);
     
     try {
+      // Track user activity (but don't wait for it)
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
         difficulty,
         language
-      });
+      }).catch(err => console.error('Error tracking activity:', err));
       
       const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
+      
+      console.log('Generating questions with params:', {
+        examType: user.examType,
+        difficulty: difficulty,
+        count,
+        askedQuestionIds,
+        language
+      });
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
@@ -143,16 +160,19 @@ const QuestionGenerator = () => {
         language
       });
       
-      if (generatedQuestions.length === 0) {
+      console.log('Generated questions:', generatedQuestions);
+      
+      if (!generatedQuestions || generatedQuestions.length === 0) {
+        setGenerationError('No questions were generated. Please try a different difficulty level or exam type.');
         toast({
-          title: 'No new questions available',
+          title: 'No questions generated',
           description: 'Try changing the difficulty or exam type to get new questions.',
           variant: "destructive"
         });
-        setIsLoading(false);
         return;
       }
       
+      // Add generated questions to the store
       generatedQuestions.forEach(question => {
         if (!customQuestions.some(q => q.id === question.id)) {
           useQuestionStore.getState().addQuestion(question);
@@ -169,15 +189,10 @@ const QuestionGenerator = () => {
           title: 'Questions generated',
           description: `${generatedQuestions.length} questions ready for practice.`,
         });
-      } else {
-        toast({
-          title: 'No questions generated',
-          description: 'Please try again with different parameters.',
-          variant: 'destructive'
-        });
       }
     } catch (error) {
       console.error('Error generating questions:', error);
+      setGenerationError('Failed to generate questions. Please try again.');
       toast({
         title: 'Error generating questions',
         description: 'Please ensure your API key is configured correctly.',
@@ -211,6 +226,12 @@ const QuestionGenerator = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {generationError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3 text-sm text-red-800 dark:text-red-300">
+                {generationError}
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
                 <Flame className="w-4 h-4 text-indigo-500" />
