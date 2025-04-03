@@ -9,7 +9,150 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          created_at: string | null
+          exam_category: string
+          id: string
+          message: string
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          exam_category: string
+          id?: string
+          message: string
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          created_at?: string | null
+          exam_category?: string
+          id?: string
+          message?: string
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          preferred_exams: string[] | null
+          preferred_language: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          preferred_exams?: string[] | null
+          preferred_language?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          preferred_exams?: string[] | null
+          preferred_language?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: string | null
+          created_at: string | null
+          difficulty_level: string | null
+          exam_category_id: string | null
+          explanation: string | null
+          id: string
+          options: Json | null
+          question: string
+          tags: string[] | null
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string | null
+          difficulty_level?: string | null
+          exam_category_id?: string | null
+          explanation?: string | null
+          id?: string
+          options?: Json | null
+          question: string
+          tags?: string[] | null
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string | null
+          difficulty_level?: string | null
+          exam_category_id?: string | null
+          explanation?: string | null
+          id?: string
+          options?: Json | null
+          question?: string
+          tags?: string[] | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_active: string | null
+          questions_attempted: number | null
+          questions_correct: number | null
+          streak_days: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_active?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          streak_days?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_active?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          streak_days?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

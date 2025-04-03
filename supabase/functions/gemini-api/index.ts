@@ -242,7 +242,7 @@ serve(async (req) => {
                   explanation: question.explanation,
                   tags: [question.category],
                   difficulty_level: question.difficulty,
-                  exam_category_id: null // This would need to be mapped to an actual category ID
+                  exam_category_id: examType
                 });
                 
               if (upsertError) {

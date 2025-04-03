@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { getApiKey as fetchApiKey, saveApiKey as storeApiKey } from '@/services/api';
 
 // Default API keys for development only (these would normally be redacted)
 const DEFAULT_API_KEYS = {
@@ -21,17 +21,16 @@ export const initializeDefaultApiKeys = async (): Promise<void> => {
       if (!storedValue) {
         // Try to fetch from Supabase first
         try {
-          const { data, error } = await supabase.functions.invoke('admin-settings', {
-            body: { action: 'get', key }
-          });
+          const apiKey = await fetchApiKey(key);
           
-          if (!error && data?.value) {
+          if (apiKey) {
             // If key exists in Supabase, use that
-            localStorage.setItem(key, data.value);
+            localStorage.setItem(key, apiKey);
             console.log(`Retrieved ${key} from Supabase settings`);
           } else {
             // Otherwise set default
             localStorage.setItem(key, defaultValue);
+            await storeApiKey(key, defaultValue);
             console.log(`Set default ${key}`);
           }
         } catch (error) {
@@ -57,61 +56,12 @@ export const isGeminiApiKeyConfigured = (): boolean => {
 
 /**
  * Helper function to get API key 
- * First tries localStorage, then falls back to Supabase
+ * This delegates to the services/api.ts implementation
  */
-export const getApiKey = async (key: string): Promise<string | null> => {
-  // First check localStorage
-  const localValue = localStorage.getItem(key);
-  if (localValue) {
-    return localValue;
-  }
-  
-  // If not in localStorage, try getting from Supabase
-  try {
-    const { data, error } = await supabase.functions.invoke('admin-settings', {
-      body: { action: 'get', key }
-    });
-    
-    if (error) {
-      console.error(`Error fetching ${key} from Supabase:`, error);
-      return null;
-    }
-    
-    if (data?.value) {
-      // Cache in localStorage for future use
-      localStorage.setItem(key, data.value);
-      return data.value;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error(`Error fetching ${key}:`, error);
-    return null;
-  }
-};
+export const getApiKey = fetchApiKey;
 
 /**
  * Helper function to save API key
- * Saves to both localStorage and Supabase
+ * This delegates to the services/api.ts implementation
  */
-export const saveApiKey = async (key: string, value: string): Promise<boolean> => {
-  // Save to localStorage
-  localStorage.setItem(key, value);
-  
-  // Also save to Supabase for persistence
-  try {
-    const { data, error } = await supabase.functions.invoke('admin-settings', {
-      body: { action: 'set', key, value }
-    });
-    
-    if (error) {
-      console.error(`Error saving ${key} to Supabase:`, error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error(`Error saving ${key}:`, error);
-    return false;
-  }
-};
+export const saveApiKey = storeApiKey;

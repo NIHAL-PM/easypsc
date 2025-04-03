@@ -1,15 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
-import { MessageSquare, Send, KeyIcon, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Send, KeyIcon, AlertTriangle, Loader2 } from 'lucide-react';
 import { generateChat, getApiKey } from '@/services/api';
 import { useAppStore } from '@/lib/store';
 import ApiKeyInput from './ApiKeyInput';
+import { getInitials } from '@/lib/utils';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -24,6 +25,7 @@ const ChatMode: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkApiKey = async () => {
@@ -42,60 +44,50 @@ const ChatMode: React.FC = () => {
     checkApiKey();
   }, []);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleApiKeySubmit = (apiKey: string) => {
     setApiKeyConfigured(true);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setIsLoading(true);
+    if (!inputValue.trim() || isLoading) return;
+    
     const userMessage = inputValue.trim();
-    
-    // Add user message to chat
-    setMessages((prev) => [
-      ...prev,
-      { role: 'user', content: userMessage }
-    ]);
     setInputValue('');
     
+    // Add user message to chat
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    setIsLoading(true);
+    
     try {
-      // Call the API
+      // Send message to API and get response
       const response = await generateChat(userMessage);
       
       if (response) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: response }
-        ]);
+        // Add assistant response to chat
+        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
       } else {
-        throw new Error('Empty response from assistant');
+        toast({
+          title: 'Error',
+          description: 'Failed to get a response. Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
-      console.error('Error generating chat response:', error);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: "I'm sorry, I encountered an issue generating a response. Please try again." }
-      ]);
-      
+      console.error('Failed to get chat response:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate a response. Please try again.',
-        variant: 'destructive'
+        description: 'An error occurred while processing your message.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-      e.preventDefault();
-      handleSendMessage();
     }
   };
 
@@ -103,9 +95,12 @@ const ChatMode: React.FC = () => {
     return (
       <Card className="border shadow-md h-[600px] flex items-center justify-center">
         <CardContent>
-          <p className="text-center text-muted-foreground">
-            Checking API configuration...
-          </p>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <p className="text-center text-muted-foreground">
+              Checking API configuration...
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -118,14 +113,12 @@ const ChatMode: React.FC = () => {
   return (
     <Card className="border shadow-md h-[600px] flex flex-col">
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <CardTitle>AI Chat Mode</CardTitle>
-          </div>
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <CardTitle>AI Assistant</CardTitle>
         </div>
         <CardDescription>
-          Chat with an AI assistant to get your doubts cleared
+          Chat with your AI study assistant for {user?.examType || 'exam'} preparation
         </CardDescription>
       </CardHeader>
       
@@ -134,7 +127,7 @@ const ChatMode: React.FC = () => {
           {messages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No messages yet</p>
-              <p className="text-sm">Start the conversation!</p>
+              <p className="text-sm">Start a conversation by sending a message!</p>
             </div>
           ) : (
             messages.map((msg, index) => (
@@ -142,7 +135,7 @@ const ChatMode: React.FC = () => {
                 key={index} 
                 className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.role !== 'user' && (
+                {msg.role === 'assistant' && (
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">
                       AI
@@ -153,7 +146,7 @@ const ChatMode: React.FC = () => {
                 <div 
                   className={`
                     max-w-[80%] rounded-lg px-3 py-2 
-                    ${msg.role === 'user'
+                    ${msg.role === 'user' 
                       ? 'bg-primary text-primary-foreground' 
                       : 'bg-muted'
                     }
@@ -162,37 +155,37 @@ const ChatMode: React.FC = () => {
                   <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>
                 </div>
                 
-                {msg.role === 'user' && (
+                {msg.role === 'user' && user && (
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                      {user?.name.substring(0, 2).toUpperCase() || 'ME'}
+                      {getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
                 )}
               </div>
             ))
           )}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
       
       <CardFooter className="p-4 border-t">
-        <div className="flex items-center gap-2 w-full">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-2 w-full">
           <Input
             value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your message..."
             disabled={isLoading}
             className="flex-1"
           />
-          <Button 
-            onClick={handleSendMessage}
-            size="icon" 
-            disabled={isLoading || !inputValue.trim()}
-          >
-            <Send className="h-4 w-4" />
+          <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()}>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
-        </div>
+        </form>
       </CardFooter>
     </Card>
   );

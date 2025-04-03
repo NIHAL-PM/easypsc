@@ -92,15 +92,20 @@ serve(async (req) => {
     }
     
     if (!NEWS_API_KEY) {
-      return new Response(
-        JSON.stringify({
-          error: 'News API key not configured'
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      // Set default API key
+      NEWS_API_KEY = '7c64a4f4675a425ebe9fc4895fc6e273';
+      
+      // Save the default key to the settings table
+      try {
+        await supabaseAdmin
+          .from('settings')
+          .upsert({
+            key: 'NEWS_API_KEY',
+            value: NEWS_API_KEY
+          });
+      } catch (error) {
+        console.error('Error saving default NEWS_API_KEY:', error);
+      }
     }
     
     // Parse request
