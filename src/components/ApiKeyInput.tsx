@@ -1,138 +1,86 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { saveApiKey, validateApiKey } from '@/services/api';
-import { motion } from 'framer-motion';
-import { KeyIcon, LockIcon, ShieldCheck } from 'lucide-react';
+import { KeyIcon, AlertCircle } from 'lucide-react';
+import { isGeminiApiKeyConfigured } from '@/lib/env';
 
 interface ApiKeyInputProps {
   onApiKeySubmit: (apiKey: string) => void;
-  apiType?: 'GEMINI_API_KEY' | 'NEWS_API_KEY';
-  title?: string;
-  description?: string;
 }
 
-const ApiKeyInput = ({ 
-  onApiKeySubmit,
-  apiType = 'GEMINI_API_KEY',
-  title = 'API Key Required',
-  description = 'Please enter your Gemini API key to generate questions'
-}: ApiKeyInputProps) => {
+const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
   const [apiKey, setApiKey] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!apiKey.trim()) {
       toast({
         title: 'API Key Required',
-        description: 'Please enter a valid API key',
+        description: 'Please enter a valid Gemini API key',
         variant: 'destructive'
       });
       return;
     }
     
-    setIsSubmitting(true);
+    // In a production app, we would validate the key format here
     
-    try {
-      // Validate API key
-      const isValid = await validateApiKey(apiType, apiKey);
-      
-      if (isValid) {
-        // Save API key
-        await saveApiKey(apiType, apiKey);
-        
-        toast({
-          title: 'API Key Saved',
-          description: 'Your API key has been saved successfully',
-        });
-        
-        onApiKeySubmit(apiKey);
-      } else {
-        toast({
-          title: 'Invalid API Key',
-          description: 'The API key you entered appears to be invalid',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('Error saving API key:', error);
-      toast({
-        title: 'Error Saving API Key',
-        description: 'An error occurred while saving your API key',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Store the key in localStorage for persistence
+    localStorage.setItem('GEMINI_API_KEY', apiKey);
+    
+    onApiKeySubmit(apiKey);
+    
+    toast({
+      title: 'API Key Saved',
+      description: 'Your Gemini API key has been saved.'
+    });
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <KeyIcon className="w-5 h-5 text-indigo-500" />
-            {title}
-          </CardTitle>
-          <CardDescription>
-            {description}
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="apiKey" className="flex items-center gap-2">
-                  <LockIcon className="w-4 h-4 text-indigo-500" />
-                  <span>API Key</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder="Enter your API key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="pr-10"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md text-sm text-blue-800 dark:text-blue-300">
-                <p className="flex items-start">
-                  <ShieldCheck className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>
-                    Your API key is stored securely in your browser and is only used to generate questions. 
-                    It is never shared with third parties or stored on our servers.
-                  </span>
-                </p>
+    <Card className="border-2 border-primary/20 shadow-lg">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <KeyIcon className="h-5 w-5 text-primary" />
+          <CardTitle>API Key Required</CardTitle>
+        </div>
+        <CardDescription>
+          Please provide a Gemini API key to enable question generation
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 text-sm">
+            <div className="flex gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <div className="text-amber-800 dark:text-amber-300">
+                <p>The Gemini API key is not configured. This key is required for AI-powered question generation.</p>
+                <p className="mt-2">You can get a Gemini API key from <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.</p>
               </div>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save API Key'}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </motion.div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="apiKey">Gemini API Key</Label>
+            <Input
+              id="apiKey"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your Gemini API key"
+              className="font-mono"
+            />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" className="w-full">Save API Key</Button>
+        </CardFooter>
+      </form>
+    </Card>
   );
 };
 

@@ -2,169 +2,185 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { ExamType, Question, User, UserStats } from '@/types';
+import { AppState, ExamType, Question, User, UserStats } from '@/types';
 
-// Helper function to safely process object entries when object might be null/undefined
-export const safeObjectEntries = (obj: Record<string, any> | null | undefined): [string, any][] => {
-  if (!obj) return [];
-  return Object.entries(obj);
-};
-
-// Define the app state interface
-interface AppState {
-  // User state
-  user: User | null;
-  authenticated: boolean;
-  isLoading: boolean;
-  
-  // Question state
-  currentQuestion: Question | null;
-  questions: Question[];
-  askedQuestionIds: string[];
-  selectedOption: number | null;
-  showExplanation: boolean;
-  
-  // Settings
-  preferredLanguage: string;
-  
-  // Functions
-  setUser: (user: User | null) => void;
-  setAuthenticated: (authenticated: boolean) => void;
-  setIsLoading: (isLoading: boolean) => void;
+type AppStoreWithActions = AppState & {
+  login: (name: string, email: string, examType: ExamType) => void;
+  setUser: (user: User) => void;
+  logout: () => void;
+  upgradeUserToPremium: (userId: string) => void;
+  addUser: (user: User) => void;
   setQuestions: (questions: Question[]) => void;
-  setCurrentQuestion: (question: Question | null) => void;
-  setSelectedOption: (option: number | null) => void;
-  setShowExplanation: (show: boolean) => void;
-  addAskedQuestionId: (id: string) => void;
-  resetAskedQuestionIds: () => void;
-  setLastQuestionTime: (time: number) => void;
-  updateUserStats: (correct: boolean, category?: string) => void;
-  setPreferredLanguage: (language: string) => void;
-  getUserStats: () => UserStats;
-  selectOption: (option: number) => void;
+  setCurrentQuestion: (question: Question) => void;
+  selectOption: (optionIndex: number) => void;
   submitAnswer: () => void;
   nextQuestion: () => void;
-  upgradeUserToPremium: () => void;
+  setIsLoading: (isLoading: boolean) => void;
+  getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
-}
+  setLastQuestionTime: (time: number) => void;
+};
 
-// Create store with persistence
-export const useAppStore = create<AppState>()(
+export const useAppStore = create<AppStoreWithActions>()(
   persist(
     (set, get) => ({
-      // User state
+      // Initial state
       user: null,
-      authenticated: false,
-      isLoading: true,
-      
-      // Question state
-      currentQuestion: null,
+      allUsers: [],
       questions: [],
-      askedQuestionIds: [],
+      currentQuestion: null,
       selectedOption: null,
+      isLoading: false,
       showExplanation: false,
-      
-      // Settings
-      preferredLanguage: 'english',
-      
-      // Set the user
-      setUser: (user) => set({ user }),
-      
-      // Set authentication status
-      setAuthenticated: (authenticated) => set({ authenticated }),
-      
-      // Set loading state
-      setIsLoading: (isLoading) => set({ isLoading }),
-      
-      // Set questions array
-      setQuestions: (questions) => {
-        const newAskedIds = questions.map(q => q.id);
-        set(state => ({
-          questions,
-          askedQuestionIds: [...state.askedQuestionIds, ...newAskedIds]
+      askedQuestionIds: [],
+
+      // Actions
+      login: (name, email, examType) => {
+        const { allUsers } = get();
+        
+        // Check if user already exists
+        const existingUser = allUsers.find(user => user.email === email);
+        
+        if (existingUser) {
+          // Update last active timestamp
+          const updatedUser = {
+            ...existingUser,
+            lastActive: new Date()
+          };
+          
+          set({ 
+            user: updatedUser,
+            allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u)
+          });
+          return;
+        }
+        
+        // Create new user
+        const newUser: User = {
+          id: uuidv4(),
+          name,
+          email,
+          examType,
+          isPremium: false,
+          monthlyQuestionsRemaining: 10,  // Free tier limit
+          questionsAnswered: 0,
+          questionsCorrect: 0,
+          currentStreak: 0,
+          lastActive: new Date(),
+          lastQuestionTime: null
+        };
+        
+        set(state => ({ 
+          user: newUser,
+          allUsers: [...state.allUsers, newUser]
         }));
       },
       
-      // Set current question
+      setUser: (user) => set({ user }),
+      
+      logout: () => set({ user: null }),
+      
+      upgradeUserToPremium: (userId) => set(state => {
+        // Update the user in allUsers
+        const updatedUsers = state.allUsers.map(user => 
+          user.id === userId 
+            ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 } 
+            : user
+        );
+        
+        // Update current user if it's the same user
+        const currentUser = state.user && state.user.id === userId
+          ? { ...state.user, isPremium: true, monthlyQuestionsRemaining: 999 }
+          : state.user;
+        
+        return { 
+          allUsers: updatedUsers,
+          user: currentUser
+        };
+      }),
+      
+      addUser: (user) => set(state => ({ 
+        allUsers: [...state.allUsers, user] 
+      })),
+      
+      setQuestions: (questions) => {
+        const newQuestionIds = questions.map(q => q.id);
+        
+        set(state => ({ 
+          questions,
+          // Add new question IDs to the list of asked questions
+          askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
+        }));
+      },
+      
       setCurrentQuestion: (question) => set({ 
         currentQuestion: question,
         selectedOption: null,
-        showExplanation: false 
+        showExplanation: false
       }),
       
-      // Set selected option
-      setSelectedOption: (option) => set({ selectedOption: option }),
-      
-      // Set show explanation
-      setShowExplanation: (show) => set({ showExplanation: show }),
-      
-      // Add asked question ID
-      addAskedQuestionId: (id) => set(state => ({
-        askedQuestionIds: [...state.askedQuestionIds, id]
-      })),
-      
-      // Reset asked question IDs
-      resetAskedQuestionIds: () => set({ askedQuestionIds: [] }),
-      
-      // Set last question time
-      setLastQuestionTime: (time) => set(state => {
-        if (!state.user) return {};
-        
-        return {
-          user: {
-            ...state.user,
-            lastQuestionTime: time
-          }
-        };
+      selectOption: (optionIndex) => set({ 
+        selectedOption: optionIndex 
       }),
       
-      // Update user stats after answering a question
-      updateUserStats: (correct, category) => set(state => {
-        if (!state.user) return {};
+      submitAnswer: () => {
+        const { user, currentQuestion, selectedOption } = get();
         
-        // Create updated user object with incremented stats
+        if (!user || !currentQuestion || selectedOption === null) return;
+        
+        const isCorrect = selectedOption === currentQuestion.correctOption;
+        
+        // Update user stats
         const updatedUser = {
-          ...state.user,
-          questionsAnswered: state.user.questionsAnswered + 1,
-          questionsCorrect: correct ? state.user.questionsCorrect + 1 : state.user.questionsCorrect,
-          currentStreak: correct ? state.user.currentStreak + 1 : 0,
+          ...user,
+          questionsAnswered: user.questionsAnswered + 1,
+          questionsCorrect: isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
+          monthlyQuestionsRemaining: user.isPremium 
+            ? user.monthlyQuestionsRemaining 
+            : Math.max(0, user.monthlyQuestionsRemaining - 1),
+          lastActive: new Date()
         };
         
-        // Update category stats if provided
-        if (category) {
-          // Update weak categories
-          const weakCategories = { ...(state.user.weakCategories || {}) };
-          const strongCategories = { ...(state.user.strongCategories || {}) };
-          
-          if (correct) {
-            // If correct, increment strong category count
-            strongCategories[category] = (strongCategories[category] || 0) + 1;
-          } else {
-            // If incorrect, increment weak category count
-            weakCategories[category] = (weakCategories[category] || 0) + 1;
-          }
-          
-          updatedUser.weakCategories = weakCategories;
-          updatedUser.strongCategories = strongCategories;
+        // Update allUsers as well
+        const updatedAllUsers = get().allUsers.map(u => 
+          u.id === user.id ? updatedUser : u
+        );
+        
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers,
+          showExplanation: true
+        });
+      },
+      
+      nextQuestion: () => {
+        const { questions, currentQuestion } = get();
+        
+        if (!currentQuestion || questions.length <= 1) {
+          set({ 
+            currentQuestion: null,
+            selectedOption: null,
+            showExplanation: false
+          });
+          return;
         }
         
-        return { user: updatedUser };
-      }),
-      
-      // Set preferred language
-      setPreferredLanguage: (language) => set(state => {
-        if (!state.user) return { preferredLanguage: language };
+        // Find index of current question
+        const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
         
-        return {
-          preferredLanguage: language,
-          user: {
-            ...state.user,
-            preferredLanguage: language
-          }
-        };
-      }),
+        // Get next question or wrap around to the first one
+        const nextIndex = (currentIndex + 1) % questions.length;
+        const nextQuestion = questions[nextIndex];
+        
+        set({
+          currentQuestion: nextQuestion,
+          selectedOption: null,
+          showExplanation: false
+        });
+      },
       
-      // Get user stats for profile display
+      setIsLoading: (isLoading) => set({ isLoading }),
+      
       getUserStats: () => {
         const { user } = get();
         
@@ -179,97 +195,62 @@ export const useAppStore = create<AppState>()(
           };
         }
         
-        // Use safeObjectEntries instead of direct Object.entries
-        const weakCategories = safeObjectEntries(user.weakCategories)
-          .sort((a, b) => b[1] - a[1]) // Fix: Sort by highest count first
-          .slice(0, 3)
-          .map(([name]) => name);
-        
-        // Use safeObjectEntries instead of direct Object.entries
-        const strongCategories = safeObjectEntries(user.strongCategories)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3)
-          .map(([name]) => name);
-        
         return {
           totalQuestions: user.questionsAnswered,
           correctAnswers: user.questionsCorrect,
           accuracyPercentage: user.questionsAnswered > 0 
             ? (user.questionsCorrect / user.questionsAnswered) * 100 
             : 0,
-          weakCategories,
-          strongCategories,
+          weakCategories: [], // To be implemented with category tracking
+          strongCategories: [], // To be implemented with category tracking
           streakDays: user.currentStreak
         };
       },
       
-      // Additional needed functions
-      
-      // Select an option
-      selectOption: (option) => set({ selectedOption: option }),
-      
-      // Submit an answer
-      submitAnswer: () => {
-        const { currentQuestion, selectedOption, user } = get();
+      changeExamType: (examType) => {
+        const { user, allUsers } = get();
         
-        if (!currentQuestion || selectedOption === null || !user) return;
+        if (!user) return;
         
-        const isCorrect = selectedOption === currentQuestion.correctOption;
+        const updatedUser = {
+          ...user,
+          examType
+        };
         
-        // Update stats
-        get().updateUserStats(isCorrect, currentQuestion.category);
+        // Update allUsers as well
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === user.id ? updatedUser : u
+        );
         
-        // Show explanation
-        set({ showExplanation: true });
-      },
-      
-      // Go to next question
-      nextQuestion: () => {
-        const { questions, currentQuestion } = get();
-        
-        if (!currentQuestion || !questions.length) return;
-        
-        const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
-        const nextIndex = (currentIndex + 1) % questions.length;
-        
-        set({
-          currentQuestion: questions[nextIndex],
-          selectedOption: null,
-          showExplanation: false
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers
         });
       },
       
-      // Upgrade user to premium
-      upgradeUserToPremium: () => set(state => {
-        if (!state.user) return {};
+      setLastQuestionTime: (time) => {
+        const { user, allUsers } = get();
         
-        return {
-          user: {
-            ...state.user,
-            isPremium: true
-          }
-        };
-      }),
-      
-      // Change exam type
-      changeExamType: (examType) => set(state => {
-        if (!state.user) return {};
+        if (!user) return;
         
-        return {
-          user: {
-            ...state.user,
-            examType
-          }
+        const updatedUser = {
+          ...user,
+          lastQuestionTime: time
         };
-      })
+        
+        // Update allUsers as well
+        const updatedAllUsers = allUsers.map(u => 
+          u.id === user.id ? updatedUser : u
+        );
+        
+        set({ 
+          user: updatedUser,
+          allUsers: updatedAllUsers
+        });
+      }
     }),
     {
-      name: 'easy-psc-app-state',
-      partialize: (state) => ({
-        user: state.user,
-        askedQuestionIds: state.askedQuestionIds,
-        preferredLanguage: state.preferredLanguage
-      }),
+      name: 'ai-exam-prep-storage',
     }
   )
 );

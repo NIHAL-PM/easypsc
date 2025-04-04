@@ -5,22 +5,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/use-toast';
-import { generateQuestions, trackUserActivity, getApiKey } from '@/services/api';
+import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { 
-  Loader2, 
-  BrainCircuit, 
-  Sparkles, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Flame,
-  Globe
-} from 'lucide-react';
+import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ApiKeyInput from './ApiKeyInput';
+import { isGeminiApiKeyConfigured } from '@/lib/env';
 import { useQuestionStore } from '@/services/questionStore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const QuestionGenerator = () => {
   const { 
@@ -30,78 +22,22 @@ const QuestionGenerator = () => {
     setIsLoading, 
     isLoading, 
     askedQuestionIds,
-    setLastQuestionTime,
-    setPreferredLanguage 
+    setLastQuestionTime
   } = useAppStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { customQuestions } = useQuestionStore();
   
   const [difficulty, setDifficulty] = useState('medium');
-  const [language, setLanguage] = useState('english');
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
-  
-  const languages = [
-    { id: 'english', name: 'English' },
-    { id: 'hindi', name: 'Hindi' },
-    { id: 'tamil', name: 'Tamil' },
-    { id: 'telugu', name: 'Telugu' },
-    { id: 'marathi', name: 'Marathi' },
-    { id: 'bengali', name: 'Bengali' },
-    { id: 'gujarati', name: 'Gujarati' },
-    { id: 'kannada', name: 'Kannada' },
-    { id: 'malayalam', name: 'Malayalam' },
-    { id: 'punjabi', name: 'Punjabi' },
-    { id: 'urdu', name: 'Urdu' }
-  ];
-  
-  useEffect(() => {
-    const checkApiKey = async () => {
-      setIsCheckingApiKey(true);
-      try {
-        const geminiKey = await getApiKey('GEMINI_API_KEY');
-        setApiKeyConfigured(!!geminiKey);
-        
-        // If we have the default key, set it in localStorage for immediate use
-        if (!geminiKey) {
-          const defaultKey = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
-          localStorage.setItem('GEMINI_API_KEY', defaultKey);
-          setApiKeyConfigured(true);
-        }
-      } catch (error) {
-        console.error('Error checking API key:', error);
-        
-        // Still set the default key if there's an error
-        const defaultKey = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
-        localStorage.setItem('GEMINI_API_KEY', defaultKey);
-        setApiKeyConfigured(true);
-      } finally {
-        setIsCheckingApiKey(false);
-      }
-    };
-    
-    checkApiKey();
-  }, []);
-  
-  useEffect(() => {
-    if (user?.preferredLanguage) {
-      setLanguage(user.preferredLanguage);
-    }
-  }, [user]);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
+    return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
+  });
   
   const handleApiKeySubmit = (apiKey: string) => {
     setApiKeyConfigured(true);
   };
   
-  const handleLanguageChange = (value: string) => {
-    setLanguage(value);
-    if (user) {
-      setPreferredLanguage(value);
-    }
-  };
-  
+  // Function to check if enough time has passed since last question generation
   const canGenerateNewQuestions = () => {
     if (!user) return true;
     
@@ -110,7 +46,7 @@ const QuestionGenerator = () => {
     
     const now = new Date().getTime();
     const timeSinceLastQuestion = now - lastQuestionTime;
-    const minWaitTime = 5 * 60 * 1000; // 5 minutes in milliseconds (reduced from 10)
+    const minWaitTime = 10 * 60 * 1000; // 10 minutes in milliseconds
     
     return timeSinceLastQuestion > minWaitTime;
   };
@@ -118,8 +54,7 @@ const QuestionGenerator = () => {
   const handleGenerateQuestions = async () => {
     if (!user) return;
     
-    setGenerationError(null);
-    
+    // Check if API key is configured
     if (!apiKeyConfigured) {
       toast({
         title: "API Key Required",
@@ -129,6 +64,7 @@ const QuestionGenerator = () => {
       return;
     }
     
+    // Check if non-premium user has questions remaining
     if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
       toast({
         title: "Question limit reached",
@@ -136,6 +72,7 @@ const QuestionGenerator = () => {
         variant: "destructive"
       });
       
+      // Prompt to upgrade
       const shouldUpgrade = window.confirm("Would you like to upgrade to premium for unlimited questions?");
       if (shouldUpgrade) {
         navigate("/premium");
@@ -143,9 +80,10 @@ const QuestionGenerator = () => {
       return;
     }
     
+    // Check if we need to enforce a cooldown period
     if (askedQuestionIds.length >= 10 && !canGenerateNewQuestions()) {
       const lastTime = new Date(user.lastQuestionTime || 0);
-      const waitTimeMinutes = Math.ceil((5 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
+      const waitTimeMinutes = Math.ceil((10 * 60 * 1000 - (new Date().getTime() - lastTime.getTime())) / 60000);
       
       toast({
         title: "Cooldown period",
@@ -158,45 +96,35 @@ const QuestionGenerator = () => {
     setIsLoading(true);
     
     try {
-      // Track user activity (but don't wait for it)
+      // Track user action
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
-        difficulty,
-        language
-      }).catch(err => console.error('Error tracking activity:', err));
-      
-      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
-      
-      console.log('Generating questions with params:', {
-        examType: user.examType,
-        difficulty: difficulty,
-        count,
-        askedQuestionIds,
-        language
+        difficulty
       });
+      
+      // Generate 5 questions for premium, or limited questions for free users
+      const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
         difficulty: difficulty as any,
         count,
-        askedQuestionIds,
-        language
+        askedQuestionIds // Pass the IDs of questions that have already been asked
       });
       
-      console.log('Generated questions:', generatedQuestions);
-      
-      if (!generatedQuestions || generatedQuestions.length === 0) {
-        setGenerationError('No questions were generated. Please try a different difficulty level or exam type.');
+      if (generatedQuestions.length === 0) {
         toast({
-          title: 'No questions generated',
-          description: 'Try changing the difficulty, exam type, or language to get new questions.',
+          title: 'No new questions available',
+          description: 'Try changing the difficulty or exam type to get new questions.',
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
       
-      // Add generated questions to the store
+      // Store the new questions in the question store for admin access
       generatedQuestions.forEach(question => {
+        // Only add if it doesn't already exist in customQuestions
         if (!customQuestions.some(q => q.id === question.id)) {
           useQuestionStore.getState().addQuestion(question);
         }
@@ -204,38 +132,35 @@ const QuestionGenerator = () => {
       
       setQuestions(generatedQuestions);
       
+      // Set the first question as current
       if (generatedQuestions.length > 0) {
         setCurrentQuestion(generatedQuestions[0]);
+        
+        // Update the last question time
         setLastQuestionTime(new Date().getTime());
         
         toast({
           title: 'Questions generated',
-          description: `${generatedQuestions.length} questions ready for practice in ${language}.`,
+          description: `${generatedQuestions.length} questions ready for practice.`,
+        });
+      } else {
+        toast({
+          title: 'No questions generated',
+          description: 'Please try again with different parameters.',
+          variant: 'destructive'
         });
       }
     } catch (error) {
       console.error('Error generating questions:', error);
-      setGenerationError('Failed to generate questions. Please check the console for more details.');
       toast({
         title: 'Error generating questions',
-        description: 'An error occurred while generating questions. Try again later.',
+        description: 'Please ensure your API key is configured correctly.',
         variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  if (isCheckingApiKey) {
-    return (
-      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
-        <div className="p-6 flex flex-col items-center justify-center min-h-[300px]">
-          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-          <p className="text-center text-muted-foreground">Checking API configuration...</p>
-        </div>
-      </Card>
-    );
-  }
   
   if (!apiKeyConfigured) {
     return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
@@ -260,12 +185,6 @@ const QuestionGenerator = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {generationError && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3 text-sm text-red-800 dark:text-red-300">
-                {generationError}
-              </div>
-            )}
-            
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
                 <Flame className="w-4 h-4 text-indigo-500" />
@@ -321,28 +240,6 @@ const QuestionGenerator = () => {
                   </Label>
                 </div>
               </RadioGroup>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
-                <Globe className="w-4 h-4 text-indigo-500" />
-                <span>Question Language</span>
-              </Label>
-              <Select 
-                value={language}
-                onValueChange={handleLanguageChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map(lang => (
-                    <SelectItem key={lang.id} value={lang.id}>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </CardContent>
