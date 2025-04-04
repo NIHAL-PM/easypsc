@@ -1,8 +1,8 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.1';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.1.1';
-import { v4 as uuidv4 } from 'https://esm.sh/uuid@9.0.0';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.1.1";
+import { v4 as uuidv4 } from "https://esm.sh/uuid@9.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,26 +70,18 @@ serve(async (req) => {
         .eq('key', 'GEMINI_API_KEY')
         .single();
       
-      if (keyError && keyError.code !== 'PGRST116') {
+      if (!keyError) {
+        GEMINI_API_KEY = keyData?.value || null;
+      } else {
         console.error('Error getting GEMINI_API_KEY:', keyError);
-        return new Response(
-          JSON.stringify({
-            error: 'Unable to retrieve API key'
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
       }
-      
-      GEMINI_API_KEY = keyData?.value || null;
     }
     
     if (!GEMINI_API_KEY) {
       return new Response(
         JSON.stringify({
-          error: 'Gemini API key not configured'
+          error: 'Gemini API key not configured',
+          details: 'Please set your Gemini API key in the application settings'
         }),
         {
           status: 400,
@@ -267,6 +259,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             error: 'Failed to generate questions',
+            details: error.message,
             questions: []
           }),
           {
@@ -299,6 +292,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             error: 'Failed to generate chat response',
+            details: error.message,
             response: null
           }),
           {
@@ -315,7 +309,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({
-        error: error.message || 'An unexpected error occurred'
+        error: error.message || 'An unexpected error occurred',
+        details: 'Check the function logs for more information'
       }),
       {
         status: 500,

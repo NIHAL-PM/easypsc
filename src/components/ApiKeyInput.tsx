@@ -20,9 +20,13 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
   // Check if API key already exists in localStorage on component mount
   useEffect(() => {
     const checkExistingApiKey = async () => {
-      const existingKey = await getApiKey('GEMINI_API_KEY');
-      if (existingKey) {
-        onApiKeySubmit(existingKey);
+      try {
+        const existingKey = await getApiKey('GEMINI_API_KEY');
+        if (existingKey) {
+          onApiKeySubmit(existingKey);
+        }
+      } catch (error) {
+        console.error('Error checking existing API key:', error);
       }
     };
     
@@ -45,14 +49,18 @@ const ApiKeyInput = ({ onApiKeySubmit }: ApiKeyInputProps) => {
     
     try {
       // Save API key to both localStorage and Supabase
-      await saveApiKey('GEMINI_API_KEY', apiKey);
+      const saved = await saveApiKey('GEMINI_API_KEY', apiKey);
       
-      toast({
-        title: 'API Key Saved',
-        description: 'Your Gemini API key has been saved.'
-      });
-      
-      onApiKeySubmit(apiKey);
+      if (saved) {
+        toast({
+          title: 'API Key Saved',
+          description: 'Your Gemini API key has been saved successfully.'
+        });
+        
+        onApiKeySubmit(apiKey);
+      } else {
+        throw new Error('Failed to save API key');
+      }
     } catch (error) {
       console.error('Error saving API key:', error);
       toast({

@@ -91,8 +91,8 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
       return [];
     }
 
-    console.log('Generated questions:', data.questions);
-    return data.questions || [];
+    console.log('Generated questions:', data?.questions);
+    return data?.questions || [];
   } catch (error) {
     console.error('Error in generateQuestions:', error);
     return [];
@@ -119,7 +119,7 @@ export const generateChat = async (userMessage: string): Promise<string | null> 
     }
     
     // Return the chat response
-    return data.response || null;
+    return data?.response || null;
   } catch (error) {
     console.error('Error generating chat response:', error);
     return null;
