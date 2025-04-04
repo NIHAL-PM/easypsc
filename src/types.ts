@@ -1,3 +1,4 @@
+
 export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'English' | 'Hindi' | 'Tamil' | 'Telugu' | 'Malayalam';

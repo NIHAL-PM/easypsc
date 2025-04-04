@@ -7,8 +7,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { SendIcon, Sparkles, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { generateChat } from '@/services/api';
-import { getGeminiApiKey } from '@/lib/env';
-import ApiKeyInput from '@/components/ApiKeyInput';
 
 interface ChatResponse {
   text: string;
@@ -26,7 +24,6 @@ const ChatMode = () => {
       isUser: false
     }
   ]);
-  const [apiKey, setApiKey] = useState<string | undefined>(localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey());
   
   const { toast } = useToast();
 
@@ -45,7 +42,7 @@ const ChatMode = () => {
     
     try {
       // Get the response from Gemini
-      const result = await generateChat(userMessage, apiKey || '');
+      const result = await generateChat(userMessage);
       
       // Add AI response to conversation
       const aiResponse = {
@@ -67,14 +64,6 @@ const ChatMode = () => {
       setUserMessage('');
     }
   };
-
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
-  };
-
-  if (!apiKey) {
-    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
-  }
 
   return (
     <Card className="border-0 shadow-lg">

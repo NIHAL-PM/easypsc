@@ -1,5 +1,4 @@
 import { Question, ExamType, QuestionDifficulty } from '@/types';
-import { getGeminiApiKey, isGeminiApiKeyConfigured } from '@/lib/env';
 import { v4 as uuidv4 } from 'uuid';
 
 interface GenerateQuestionsOptions {
@@ -8,6 +7,9 @@ interface GenerateQuestionsOptions {
   count: number;
   askedQuestionIds?: string[];
 }
+
+// Hard-coded API key - in a real app, this would come from environment variables
+const GEMINI_API_KEY = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
 
 /**
  * Generates AI-powered questions using the Gemini 1.5 Flash API
@@ -19,8 +21,6 @@ export const generateQuestions = async ({
   askedQuestionIds = []
 }: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
-    const GEMINI_API_KEY = localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey();
-    
     if (!GEMINI_API_KEY) {
       console.error('Gemini API key not configured.');
       throw new Error('API key not configured');
@@ -130,15 +130,15 @@ export const generateChat = async (
   apiKey?: string
 ): Promise<string | null> => {
   try {
-    const GEMINI_API_KEY = apiKey || localStorage.getItem('GEMINI_API_KEY') || getGeminiApiKey();
+    const geminiApiKey = apiKey || GEMINI_API_KEY;
     
-    if (!GEMINI_API_KEY) {
+    if (!geminiApiKey) {
       console.error('Gemini API key not configured for chat.');
       return null;
     }
     
     // Call the Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

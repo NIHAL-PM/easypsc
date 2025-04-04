@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -10,9 +10,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
 import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ApiKeyInput from './ApiKeyInput';
-import { isGeminiApiKeyConfigured } from '@/lib/env';
 import { useQuestionStore } from '@/services/questionStore';
+import { QuestionDifficulty } from '@/types';
 
 const QuestionGenerator = () => {
   const { 
@@ -24,18 +23,12 @@ const QuestionGenerator = () => {
     askedQuestionIds,
     setLastQuestionTime
   } = useAppStore();
+  
   const { toast } = useToast();
   const navigate = useNavigate();
   const { customQuestions } = useQuestionStore();
   
-  const [difficulty, setDifficulty] = useState('medium');
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(() => {
-    return localStorage.getItem('GEMINI_API_KEY') || isGeminiApiKeyConfigured();
-  });
-  
-  const handleApiKeySubmit = (apiKey: string) => {
-    setApiKeyConfigured(true);
-  };
+  const [difficulty, setDifficulty] = useState<QuestionDifficulty>('medium');
   
   // Function to check if enough time has passed since last question generation
   const canGenerateNewQuestions = () => {
@@ -53,16 +46,6 @@ const QuestionGenerator = () => {
   
   const handleGenerateQuestions = async () => {
     if (!user) return;
-    
-    // Check if API key is configured
-    if (!apiKeyConfigured) {
-      toast({
-        title: "API Key Required",
-        description: "Please configure your Gemini API key first.",
-        variant: "destructive"
-      });
-      return;
-    }
     
     // Check if non-premium user has questions remaining
     if (!user.isPremium && user.monthlyQuestionsRemaining <= 0) {
@@ -107,7 +90,7 @@ const QuestionGenerator = () => {
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
-        difficulty: difficulty as any,
+        difficulty: difficulty,
         count,
         askedQuestionIds // Pass the IDs of questions that have already been asked
       });
@@ -154,17 +137,13 @@ const QuestionGenerator = () => {
       console.error('Error generating questions:', error);
       toast({
         title: 'Error generating questions',
-        description: 'Please ensure your API key is configured correctly.',
+        description: 'An error occurred while generating questions. Please try again.',
         variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  if (!apiKeyConfigured) {
-    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
-  }
   
   return (
     <motion.div
@@ -192,7 +171,7 @@ const QuestionGenerator = () => {
               </Label>
               <RadioGroup 
                 defaultValue={difficulty} 
-                onValueChange={setDifficulty}
+                onValueChange={(value) => setDifficulty(value as QuestionDifficulty)}
                 className="grid grid-cols-3 gap-3"
               >
                 <div className="relative">
