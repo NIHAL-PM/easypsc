@@ -1,4 +1,3 @@
-
 export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'english' | 'hindi' | 'tamil' | 'telugu' | 'malayalam' | 'marathi' | 'bengali' | 'gujarati' | 'kannada' | 'punjabi' | 'urdu';
@@ -13,9 +12,11 @@ export interface User {
   questionsAnswered: number;
   questionsCorrect: number;
   currentStreak: number;
-  lastActive: Date | null;
+  lastActive: Date;
   lastQuestionTime: number | null;
   preferredLanguage: string;
+  weakCategories?: Record<string, number>;
+  strongCategories?: Record<string, number>;
 }
 
 export interface Question {
@@ -24,8 +25,9 @@ export interface Question {
   options: string[];
   correctOption: number;
   explanation: string;
-  category: string;
-  difficulty: QuestionDifficulty;
+  category?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  tags?: string[];
 }
 
 export interface CurrentAffairsItem {

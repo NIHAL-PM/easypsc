@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -214,14 +213,26 @@ export const useAppStore = create<AppStoreWithActions>()(
           };
         }
         
+        // Use safeObjectEntries instead of direct Object.entries
+        const weakCategories = safeObjectEntries(user.weakCategories || {})
+          .sort((a, b) => a[1] - b[1])
+          .slice(0, 3)
+          .map(([name]) => name);
+        
+        // Use safeObjectEntries instead of direct Object.entries
+        const strongCategories = safeObjectEntries(user.strongCategories || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([name]) => name);
+        
         return {
           totalQuestions: user.questionsAnswered,
           correctAnswers: user.questionsCorrect,
           accuracyPercentage: user.questionsAnswered > 0 
             ? (user.questionsCorrect / user.questionsAnswered) * 100 
             : 0,
-          weakCategories: [], // To be implemented with category tracking
-          strongCategories: [], // To be implemented with category tracking
+          weakCategories,
+          strongCategories,
           streakDays: user.currentStreak
         };
       },

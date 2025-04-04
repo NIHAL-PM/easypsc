@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -66,7 +67,9 @@ const Index = () => {
               questionsCorrect: 0,
               currentStreak: 0,
               lastActive: new Date(),
-              lastQuestionTime: null
+              lastQuestionTime: null,
+              weakCategories: {},
+              strongCategories: {}
             });
           } else {
             // If no profile exists yet (possible if auth was set up but profile wasn't created)
@@ -82,7 +85,9 @@ const Index = () => {
               questionsCorrect: 0,
               currentStreak: 0,
               lastActive: new Date(),
-              lastQuestionTime: null
+              lastQuestionTime: null,
+              weakCategories: {},
+              strongCategories: {}
             });
           }
         }
@@ -119,7 +124,9 @@ const Index = () => {
               questionsCorrect: 0,
               currentStreak: 0,
               lastActive: new Date(),
-              lastQuestionTime: null
+              lastQuestionTime: null,
+              weakCategories: {},
+              strongCategories: {}
             });
           }
           

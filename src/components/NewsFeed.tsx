@@ -86,7 +86,7 @@ const NewsFeed = () => {
       </CardHeader>
       
       <div className="px-4">
-        <Tabs defaultValue={activeCategory} onValueChange={setActiveCategory}>
+        <Tabs value={activeCategory} onValueChange={setActiveCategory}>
           <ScrollArea className="w-full">
             <TabsList className="w-full justify-start mb-4">
               {NewsCategories.map((category) => (
