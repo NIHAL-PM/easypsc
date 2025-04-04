@@ -1,7 +1,7 @@
-
 import { db, callFunction, auth } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { ExamType, Question, QuestionDifficulty, User, UserStats } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -17,14 +17,22 @@ export const saveApiKey = async (key: string, value: string) => {
     // First save to localStorage for immediate use
     localStorage.setItem(key, value);
     
-    // Then save to Firestore for persistence (if user is authenticated)
+    // Then save to database for persistence (if user is authenticated)
     if (auth.currentUser) {
-      await setDoc(doc(db, "settings", key), {
-        value,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: auth.currentUser.uid
-      }, { merge: true });
+      // Save to Supabase settings table
+      const { error } = await supabase
+        .from('settings')
+        .upsert(
+          { 
+            key,
+            value,
+            user_id: auth.currentUser.uid,
+            updated_at: new Date()
+          },
+          { onConflict: 'key' }
+        );
+        
+      if (error) throw error;
     }
     
     return true;
@@ -43,16 +51,30 @@ export const getApiKey = async (key: string): Promise<string | null> => {
       return localValue;
     }
     
-    // If not in localStorage and user is authenticated, try to get from Firestore
+    // If not in localStorage and user is authenticated, try to get from database
     if (auth.currentUser) {
-      const settingDoc = await getDoc(doc(db, "settings", key));
-      if (settingDoc.exists()) {
-        const data = settingDoc.data();
-        if (data?.value) {
-          localStorage.setItem(key, data.value);
-          return data.value;
-        }
+      // Try to get from Supabase
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', key)
+        .eq('user_id', auth.currentUser.uid)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching API key from Supabase:', error);
+      } else if (data?.value) {
+        localStorage.setItem(key, data.value);
+        return data.value;
       }
+    }
+    
+    // If we get here, we couldn't find a saved key
+    // Check if we have the default Gemini API key
+    if (key === 'GEMINI_API_KEY') {
+      const defaultKey = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
+      localStorage.setItem(key, defaultKey);
+      return defaultKey;
     }
     
     return null;
@@ -67,8 +89,8 @@ export const validateApiKey = async (keyType: string, value: string): Promise<bo
   try {
     // For Gemini API key
     if (keyType === 'GEMINI_API_KEY') {
-      // Simple validation - just checking if it starts with 'AIza'
-      return value.startsWith('AIza');
+      // Since we have a valid key hardcoded, just check if it's that or starts with 'AIza'
+      return value === "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik" || value.startsWith('AIza');
     }
     
     // For News API key - simple format validation
@@ -88,13 +110,11 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
     console.log('Generating questions with params:', options);
     
     // Get the API key
-    const apiKey = await getApiKey('GEMINI_API_KEY');
-    if (!apiKey) {
-      throw new Error('Gemini API key not configured');
-    }
+    const apiKey = await getApiKey('GEMINI_API_KEY') || "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
+    
+    console.log('Using API key:', apiKey ? 'Key is set' : 'No key available');
 
     // Basic implementation for question generation using Gemini API
-    // In a production app, this would be a cloud function
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
       method: 'POST',
       headers: {
@@ -115,7 +135,10 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+      console.error('API request failed with status', response.status);
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -124,11 +147,15 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
     let questionsText = '';
     if (data.candidates && data.candidates[0]?.content?.parts) {
       questionsText = data.candidates[0].content.parts[0].text;
+    } else {
+      console.error('Unexpected API response structure:', data);
+      throw new Error('Unexpected API response structure');
     }
 
     // Extract JSON from the text response
     let jsonMatch = questionsText.match(/\[.*\]/s);
     if (!jsonMatch) {
+      console.error('Failed to find JSON pattern in API response:', questionsText);
       throw new Error('Failed to parse questions from API response');
     }
 
@@ -139,6 +166,7 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
       return questionsData || [];
     } catch (e) {
       console.error('JSON parse error:', e);
+      console.error('Failed JSON content:', jsonMatch[0]);
       throw new Error('Failed to parse question data');
     }
   } catch (error) {

@@ -22,7 +22,9 @@ async function ensureSettingsTable(supabaseAdmin: any) {
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           key TEXT UNIQUE NOT NULL,
           value TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+          user_id UUID,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
         );
       `;
       
@@ -70,10 +72,12 @@ serve(async (req) => {
         .eq('key', 'GEMINI_API_KEY')
         .single();
       
-      if (!keyError) {
-        GEMINI_API_KEY = keyData?.value || null;
+      if (!keyError && keyData?.value) {
+        GEMINI_API_KEY = keyData.value;
       } else {
-        console.error('Error getting GEMINI_API_KEY:', keyError);
+        console.error('Error getting GEMINI_API_KEY from settings table:', keyError);
+        // Use default key if available
+        GEMINI_API_KEY = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
       }
     }
     

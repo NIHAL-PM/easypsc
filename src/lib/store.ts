@@ -183,7 +183,7 @@ export const useAppStore = create<AppState>()(
         
         // Use safeObjectEntries instead of direct Object.entries
         const weakCategories = safeObjectEntries(user.weakCategories)
-          .sort((a, b) => a[1] - b[1])
+          .sort((a, b) => b[1] - a[1]) // Fix: Sort by highest count first
           .slice(0, 3)
           .map(([name]) => name);
         

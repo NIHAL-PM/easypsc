@@ -63,9 +63,20 @@ const QuestionGenerator = () => {
       try {
         const geminiKey = await getApiKey('GEMINI_API_KEY');
         setApiKeyConfigured(!!geminiKey);
+        
+        // If we have the default key, set it in localStorage for immediate use
+        if (!geminiKey) {
+          const defaultKey = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
+          localStorage.setItem('GEMINI_API_KEY', defaultKey);
+          setApiKeyConfigured(true);
+        }
       } catch (error) {
         console.error('Error checking API key:', error);
-        setApiKeyConfigured(false);
+        
+        // Still set the default key if there's an error
+        const defaultKey = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
+        localStorage.setItem('GEMINI_API_KEY', defaultKey);
+        setApiKeyConfigured(true);
       } finally {
         setIsCheckingApiKey(false);
       }
@@ -204,10 +215,10 @@ const QuestionGenerator = () => {
       }
     } catch (error) {
       console.error('Error generating questions:', error);
-      setGenerationError('Failed to generate questions. Please try again.');
+      setGenerationError('Failed to generate questions. Please check the console for more details.');
       toast({
         title: 'Error generating questions',
-        description: 'Please ensure your API key is configured correctly.',
+        description: 'An error occurred while generating questions. Try again later.',
         variant: 'destructive'
       });
     } finally {
