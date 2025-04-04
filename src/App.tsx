@@ -3,15 +3,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useToast } from "./components/ui/use-toast";
+import { useAppStore } from "./lib/store";
+import { getApiKey } from "./services/api";
+import { initializeDefaultApiKeys } from "./lib/api-key";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./lib/firebase";
+import { getUserFromFirebase } from "./lib/auth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PremiumUpgrade from "./components/PremiumUpgrade";
 import AdminPanel from "./components/AdminPanel";
-import { useEffect } from "react";
-import { useToast } from "./components/ui/use-toast";
-import { useAppStore } from "./lib/store";
-import { getApiKey, saveApiKey } from "./services/api";
-import { initializeDefaultApiKeys } from "./lib/api-key";
 
 // Check if admin is authenticated
 const isAdminAuthenticated = () => {
@@ -52,6 +55,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   const { toast } = useToast();
+  const { setUser, setIsLoading, setAuthenticated } = useAppStore();
   
   useEffect(() => {
     // Initialize default API keys
@@ -81,6 +85,28 @@ const App = () => {
     
     setupApiKeys();
 
+    // Set up Firebase auth state change listener
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setIsLoading(true);
+      
+      if (firebaseUser) {
+        try {
+          const user = await getUserFromFirebase(firebaseUser);
+          setUser(user);
+          setAuthenticated(true);
+        } catch (error) {
+          console.error('Error getting user data:', error);
+          setUser(null);
+          setAuthenticated(false);
+        }
+      } else {
+        setUser(null);
+        setAuthenticated(false);
+      }
+      
+      setIsLoading(false);
+    });
+
     // Add event listener for responsive design testing
     const handleResize = () => {
       document.documentElement.style.setProperty(
@@ -94,9 +120,10 @@ const App = () => {
     window.addEventListener("resize", handleResize);
     
     return () => {
+      unsubscribe();
       window.removeEventListener("resize", handleResize);
     };
-  }, [toast]);
+  }, [setUser, setIsLoading, setAuthenticated, toast]);
 
   return (
     <TooltipProvider>

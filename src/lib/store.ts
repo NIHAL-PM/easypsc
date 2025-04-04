@@ -1,204 +1,162 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, ExamType, Question, User, UserStats } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
+import { ExamType, Question, User, UserStats } from '@/types';
+import { safeObjectEntries } from './utils';
 
-// Helper function to safely handle Object.entries for potentially null/undefined objects
-const safeObjectEntries = (obj: Record<string, number> | null | undefined): [string, number][] => {
-  if (!obj) return [];
-  return Object.entries(obj);
-};
-
-type AppStoreWithActions = AppState & {
-  login: (name: string, email: string, examType: ExamType) => void;
-  setUser: (user: User) => void;
-  logout: () => void;
-  upgradeUserToPremium: (userId: string) => void;
-  addUser: (user: User) => void;
-  setQuestions: (questions: Question[]) => void;
-  setCurrentQuestion: (question: Question) => void;
-  selectOption: (optionIndex: number) => void;
-  submitAnswer: () => void;
-  nextQuestion: () => void;
+// Define the app state interface
+interface AppState {
+  // User state
+  user: User | null;
+  authenticated: boolean;
+  isLoading: boolean;
+  
+  // Question state
+  currentQuestion: Question | null;
+  questions: Question[];
+  askedQuestionIds: string[];
+  selectedOption: number | null;
+  showExplanation: boolean;
+  
+  // Settings
+  preferredLanguage: string;
+  
+  // Functions
+  setUser: (user: User | null) => void;
+  setAuthenticated: (authenticated: boolean) => void;
   setIsLoading: (isLoading: boolean) => void;
-  getUserStats: () => UserStats;
-  changeExamType: (examType: ExamType) => void;
+  setQuestions: (questions: Question[]) => void;
+  setCurrentQuestion: (question: Question | null) => void;
+  setSelectedOption: (option: number | null) => void;
+  setShowExplanation: (show: boolean) => void;
+  addAskedQuestionId: (id: string) => void;
+  resetAskedQuestionIds: () => void;
   setLastQuestionTime: (time: number) => void;
+  updateUserStats: (correct: boolean, category?: string) => void;
   setPreferredLanguage: (language: string) => void;
-};
+  getUserStats: () => UserStats;
+}
 
-export const useAppStore = create<AppStoreWithActions>()(
+// Create store with persistence
+export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // Initial state
+      // User state
       user: null,
-      allUsers: [],
-      questions: [],
-      currentQuestion: null,
-      selectedOption: null,
-      isLoading: false,
-      showExplanation: false,
-      askedQuestionIds: [],
-
-      // Actions
-      login: async (name, email, examType) => {
-        const { allUsers } = get();
-        
-        // Check if user already exists
-        const existingUser = allUsers.find(user => user.email === email);
-        
-        if (existingUser) {
-          // Update last active timestamp
-          const updatedUser = {
-            ...existingUser,
-            lastActive: new Date()
-          };
-          
-          set({ 
-            user: updatedUser,
-            allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u)
-          });
-          return;
-        }
-        
-        // Create new user
-        const newUser: User = {
-          id: uuidv4(),
-          name,
-          email,
-          examType,
-          isPremium: false,
-          monthlyQuestionsRemaining: 10,  // Free tier limit
-          questionsAnswered: 0,
-          questionsCorrect: 0,
-          currentStreak: 0,
-          lastActive: new Date(),
-          lastQuestionTime: null,
-          preferredLanguage: 'english'
-        };
-        
-        set(state => ({ 
-          user: newUser,
-          allUsers: [...state.allUsers, newUser]
-        }));
-      },
+      authenticated: false,
+      isLoading: true,
       
+      // Question state
+      currentQuestion: null,
+      questions: [],
+      askedQuestionIds: [],
+      selectedOption: null,
+      showExplanation: false,
+      
+      // Settings
+      preferredLanguage: 'english',
+      
+      // Set the user
       setUser: (user) => set({ user }),
       
-      logout: async () => {
-        try {
-          // Sign out from Supabase
-          await supabase.auth.signOut();
-        } catch (error) {
-          console.error('Error signing out:', error);
-        }
-        
-        // Reset app state
-        set({ user: null });
-      },
+      // Set authentication status
+      setAuthenticated: (authenticated) => set({ authenticated }),
       
-      upgradeUserToPremium: (userId) => set(state => {
-        // Update the user in allUsers
-        const updatedUsers = state.allUsers.map(user => 
-          user.id === userId 
-            ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 } 
-            : user
-        );
-        
-        // Update current user if it's the same user
-        const currentUser = state.user && state.user.id === userId
-          ? { ...state.user, isPremium: true, monthlyQuestionsRemaining: 999 }
-          : state.user;
-        
-        return { 
-          allUsers: updatedUsers,
-          user: currentUser
-        };
-      }),
+      // Set loading state
+      setIsLoading: (isLoading) => set({ isLoading }),
       
-      addUser: (user) => set(state => ({ 
-        allUsers: [...state.allUsers, user] 
-      })),
-      
+      // Set questions array
       setQuestions: (questions) => {
-        const newQuestionIds = questions.map(q => q.id);
-        
-        set(state => ({ 
+        const newAskedIds = questions.map(q => q.id);
+        set(state => ({
           questions,
-          // Add new question IDs to the list of asked questions
-          askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
+          askedQuestionIds: [...state.askedQuestionIds, ...newAskedIds]
         }));
       },
       
+      // Set current question
       setCurrentQuestion: (question) => set({ 
         currentQuestion: question,
         selectedOption: null,
-        showExplanation: false
+        showExplanation: false 
       }),
       
-      selectOption: (optionIndex) => set({ 
-        selectedOption: optionIndex 
+      // Set selected option
+      setSelectedOption: (option) => set({ selectedOption: option }),
+      
+      // Set show explanation
+      setShowExplanation: (show) => set({ showExplanation: show }),
+      
+      // Add asked question ID
+      addAskedQuestionId: (id) => set(state => ({
+        askedQuestionIds: [...state.askedQuestionIds, id]
+      })),
+      
+      // Reset asked question IDs
+      resetAskedQuestionIds: () => set({ askedQuestionIds: [] }),
+      
+      // Set last question time
+      setLastQuestionTime: (time) => set(state => {
+        if (state.user) {
+          return {
+            user: {
+              ...state.user,
+              lastQuestionTime: time
+            }
+          };
+        }
+        return {};
       }),
       
-      submitAnswer: () => {
-        const { user, currentQuestion, selectedOption } = get();
+      // Update user stats after answering a question
+      updateUserStats: (correct, category) => set(state => {
+        if (!state.user) return {};
         
-        if (!user || !currentQuestion || selectedOption === null) return;
-        
-        const isCorrect = selectedOption === currentQuestion.correctOption;
-        
-        // Update user stats
+        // Create updated user object with incremented stats
         const updatedUser = {
-          ...user,
-          questionsAnswered: user.questionsAnswered + 1,
-          questionsCorrect: isCorrect ? user.questionsCorrect + 1 : user.questionsCorrect,
-          monthlyQuestionsRemaining: user.isPremium 
-            ? user.monthlyQuestionsRemaining 
-            : Math.max(0, user.monthlyQuestionsRemaining - 1),
-          lastActive: new Date()
+          ...state.user,
+          questionsAnswered: state.user.questionsAnswered + 1,
+          questionsCorrect: correct ? state.user.questionsCorrect + 1 : state.user.questionsCorrect,
+          currentStreak: correct ? state.user.currentStreak + 1 : 0,
         };
         
-        // Update allUsers as well
-        const updatedAllUsers = get().allUsers.map(u => 
-          u.id === user.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers,
-          showExplanation: true
-        });
-      },
-      
-      nextQuestion: () => {
-        const { questions, currentQuestion } = get();
-        
-        if (!currentQuestion || questions.length <= 1) {
-          set({ 
-            currentQuestion: null,
-            selectedOption: null,
-            showExplanation: false
-          });
-          return;
+        // Update category stats if provided
+        if (category) {
+          // Update weak categories
+          const weakCategories = { ...state.user.weakCategories } || {};
+          const strongCategories = { ...state.user.strongCategories } || {};
+          
+          if (correct) {
+            // If correct, increment strong category count
+            strongCategories[category] = (strongCategories[category] || 0) + 1;
+          } else {
+            // If incorrect, increment weak category count
+            weakCategories[category] = (weakCategories[category] || 0) + 1;
+          }
+          
+          updatedUser.weakCategories = weakCategories;
+          updatedUser.strongCategories = strongCategories;
         }
         
-        // Find index of current question
-        const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
-        
-        // Get next question or wrap around to the first one
-        const nextIndex = (currentIndex + 1) % questions.length;
-        const nextQuestion = questions[nextIndex];
-        
-        set({
-          currentQuestion: nextQuestion,
-          selectedOption: null,
-          showExplanation: false
-        });
-      },
+        return { user: updatedUser };
+      }),
       
-      setIsLoading: (isLoading) => set({ isLoading }),
+      // Set preferred language
+      setPreferredLanguage: (language) => set(state => {
+        if (state.user) {
+          return {
+            preferredLanguage: language,
+            user: {
+              ...state.user,
+              preferredLanguage: language
+            }
+          };
+        }
+        return { preferredLanguage: language };
+      }),
       
+      // Get user stats for profile display
       getUserStats: () => {
         const { user } = get();
         
@@ -236,87 +194,14 @@ export const useAppStore = create<AppStoreWithActions>()(
           streakDays: user.currentStreak
         };
       },
-      
-      changeExamType: (examType) => {
-        const { user, allUsers } = get();
-        
-        if (!user) return;
-        
-        const updatedUser = {
-          ...user,
-          examType
-        };
-        
-        // Update allUsers as well
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === user.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers
-        });
-      },
-      
-      setLastQuestionTime: (time) => {
-        const { user, allUsers } = get();
-        
-        if (!user) return;
-        
-        const updatedUser = {
-          ...user,
-          lastQuestionTime: time
-        };
-        
-        // Update allUsers as well
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === user.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers
-        });
-      },
-      
-      setPreferredLanguage: (language) => {
-        const { user, allUsers } = get();
-        
-        if (!user) return;
-        
-        const updatedUser = {
-          ...user,
-          preferredLanguage: language
-        };
-        
-        // Update user profile in Supabase if authenticated
-        try {
-          if (user.id) {
-            supabase
-              .from('profiles')
-              .update({ preferred_language: language })
-              .eq('id', user.id)
-              .then(({ error }) => {
-                if (error) console.error('Error updating language preference:', error);
-              });
-          }
-        } catch (error) {
-          console.error('Error updating language preference:', error);
-        }
-        
-        // Update allUsers as well
-        const updatedAllUsers = allUsers.map(u => 
-          u.id === user.id ? updatedUser : u
-        );
-        
-        set({ 
-          user: updatedUser,
-          allUsers: updatedAllUsers
-        });
-      }
     }),
     {
-      name: 'ai-exam-prep-storage',
+      name: 'easy-psc-app-state',
+      partialize: (state) => ({
+        user: state.user,
+        askedQuestionIds: state.askedQuestionIds,
+        preferredLanguage: state.preferredLanguage
+      }),
     }
   )
 );

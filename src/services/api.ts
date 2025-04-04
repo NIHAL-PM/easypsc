@@ -1,6 +1,7 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { ExamType, Question, QuestionDifficulty, User } from '@/types';
+import { db, callFunction, auth } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit } from 'firebase/firestore';
+import { ExamType, Question, QuestionDifficulty, User, UserStats } from '@/types';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -16,18 +17,14 @@ export const saveApiKey = async (key: string, value: string) => {
     // First save to localStorage for immediate use
     localStorage.setItem(key, value);
     
-    // Then save to Supabase for persistence
-    const { data, error } = await supabase.functions.invoke('admin-settings', {
-      body: {
-        action: 'set',
-        key,
-        value
-      }
-    });
-    
-    if (error) {
-      console.error('Error saving API key to Supabase:', error);
-      return false;
+    // Then save to Firestore for persistence (if user is authenticated)
+    if (auth.currentUser) {
+      await setDoc(doc(db, "settings", key), {
+        value,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: auth.currentUser.uid
+      }, { merge: true });
     }
     
     return true;
@@ -46,25 +43,19 @@ export const getApiKey = async (key: string): Promise<string | null> => {
       return localValue;
     }
     
-    // If not in localStorage, try to get from Supabase
-    const { data, error } = await supabase.functions.invoke('admin-settings', {
-      body: {
-        action: 'get',
-        key
+    // If not in localStorage and user is authenticated, try to get from Firestore
+    if (auth.currentUser) {
+      const settingDoc = await getDoc(doc(db, "settings", key));
+      if (settingDoc.exists()) {
+        const data = settingDoc.data();
+        if (data?.value) {
+          localStorage.setItem(key, data.value);
+          return data.value;
+        }
       }
-    });
-    
-    if (error) {
-      console.error('Error fetching API key from Supabase:', error);
-      return null;
     }
     
-    // If key found in Supabase, save to localStorage for future use
-    if (data?.value) {
-      localStorage.setItem(key, data.value);
-    }
-    
-    return data?.value || null;
+    return null;
   } catch (error) {
     console.error('Error fetching API key:', error);
     return null;
@@ -75,22 +66,9 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
   try {
     console.log('Generating questions with params:', options);
     
-    const { data, error } = await supabase.functions.invoke('gemini-api', {
-      body: {
-        action: 'generate-questions',
-        examType: options.examType,
-        difficulty: options.difficulty,
-        count: options.count,
-        askedQuestionIds: options.askedQuestionIds || [],
-        language: options.language || 'english'
-      }
-    });
-
-    if (error) {
-      console.error('Error generating questions:', error);
-      return [];
-    }
-
+    // Use Firebase callable function
+    const data = await callFunction('generateQuestions', options);
+    
     console.log('Generated questions:', data?.questions);
     return data?.questions || [];
   } catch (error) {
@@ -100,23 +78,14 @@ export const generateQuestions = async (options: GenerateQuestionsOptions): Prom
 };
 
 /**
- * Generates chat responses using the Gemini API through Supabase Edge Function
+ * Generates chat responses using AI
  */
 export const generateChat = async (userMessage: string): Promise<string | null> => {
   try {
-    console.log('Generating chat response with Supabase Edge Function');
+    console.log('Generating chat response');
     
-    const { data, error } = await supabase.functions.invoke('gemini-api', {
-      body: {
-        action: 'generate-chat',
-        prompt: userMessage
-      }
-    });
-    
-    if (error) {
-      console.error('Edge function error:', error);
-      return null;
-    }
+    // Use Firebase callable function
+    const data = await callFunction('generateChat', { prompt: userMessage });
     
     // Return the chat response
     return data?.response || null;
@@ -131,19 +100,24 @@ export const generateChat = async (userMessage: string): Promise<string | null> 
  */
 export const getChatMessages = async (examType: ExamType) => {
   try {
-    const { data, error } = await supabase.functions.invoke('chat-room', {
-      body: {
-        action: 'get-messages',
-        examType
-      }
+    const messagesRef = collection(db, "chat_messages");
+    const q = query(
+      messagesRef, 
+      where("examCategory", "==", examType),
+      orderBy("createdAt", "desc"),
+      limit(100)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const messages = [];
+    querySnapshot.forEach((doc) => {
+      messages.push({
+        id: doc.id,
+        ...doc.data()
+      });
     });
     
-    if (error) {
-      console.error('Error fetching chat messages:', error);
-      return [];
-    }
-    
-    return data.messages || [];
+    return messages.reverse();
   } catch (error) {
     console.error('Error getting chat messages:', error);
     return [];
@@ -155,22 +129,20 @@ export const getChatMessages = async (examType: ExamType) => {
  */
 export const sendChatMessage = async (examType: ExamType, userId: string, userName: string, message: string) => {
   try {
-    const { data, error } = await supabase.functions.invoke('chat-room', {
-      body: {
-        action: 'send-message',
-        examType,
-        userId,
-        userName,
-        message
-      }
-    });
+    const messageData = {
+      examCategory: examType,
+      userId,
+      userName,
+      message,
+      createdAt: new Date()
+    };
     
-    if (error) {
-      console.error('Error sending chat message:', error);
-      return null;
-    }
+    const docRef = await addDoc(collection(db, "chat_messages"), messageData);
     
-    return data.message || null;
+    return {
+      id: docRef.id,
+      ...messageData
+    };
   } catch (error) {
     console.error('Error sending chat message:', error);
     return null;
@@ -182,19 +154,10 @@ export const sendChatMessage = async (examType: ExamType, userId: string, userNa
  */
 export const getNewsArticles = async (category: string = 'general') => {
   try {
-    const { data, error } = await supabase.functions.invoke('news-feed', {
-      body: {
-        action: 'get-news',
-        category
-      }
-    });
+    // Use Firebase callable function
+    const data = await callFunction('getNews', { category });
     
-    if (error) {
-      console.error('Error fetching news:', error);
-      return [];
-    }
-    
-    return data.articles || [];
+    return data?.articles || [];
   } catch (error) {
     console.error('Error getting news articles:', error);
     return [];
@@ -203,7 +166,6 @@ export const getNewsArticles = async (category: string = 'general') => {
 
 /**
  * Tracks user activity for analytics
- * Note: We're using direct API calls instead of edge functions for this
  */
 export const trackUserActivity = async (
   userId: string,
@@ -211,19 +173,12 @@ export const trackUserActivity = async (
   details: Record<string, any> = {}
 ) => {
   try {
-    // Instead of trying to access user_activities directly, we'll use an edge function
-    const { data, error } = await supabase.functions.invoke('track-activity', {
-      body: {
-        userId,
-        action,
-        details
-      }
+    await addDoc(collection(db, "user_activities"), {
+      userId,
+      action,
+      details,
+      createdAt: new Date()
     });
-      
-    if (error) {
-      console.error('Error tracking user activity:', error);
-      return false;
-    }
     
     return true;
   } catch (error) {
@@ -233,38 +188,34 @@ export const trackUserActivity = async (
 };
 
 /**
- * Get user statistics from Supabase
+ * Get user statistics from Firestore
  */
-export const getUserStats = async (userId: string) => {
+export const getUserStats = async (userId: string): Promise<UserStats> => {
   try {
-    // Get user progress from Supabase
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const userProgressDoc = await getDoc(doc(db, "user_progress", userId));
+    
+    if (userProgressDoc.exists()) {
+      const data = userProgressDoc.data();
       
-    if (error) {
-      console.error('Error fetching user stats:', error);
       return {
-        totalQuestions: 0,
-        correctAnswers: 0,
-        accuracyPercentage: 0,
-        weakCategories: [],
-        strongCategories: [],
-        streakDays: 0
+        totalQuestions: data?.questionsAttempted || 0,
+        correctAnswers: data?.questionsCorrect || 0,
+        accuracyPercentage: data?.questionsAttempted && data.questionsAttempted > 0 
+          ? ((data.questionsCorrect || 0) / data.questionsAttempted) * 100 
+          : 0,
+        weakCategories: data?.weakCategories || [],
+        strongCategories: data?.strongCategories || [],
+        streakDays: data?.streakDays || 0
       };
     }
     
     return {
-      totalQuestions: data?.questions_attempted || 0,
-      correctAnswers: data?.questions_correct || 0,
-      accuracyPercentage: data?.questions_attempted && data.questions_attempted > 0 
-        ? ((data.questions_correct || 0) / data.questions_attempted) * 100 
-        : 0,
-      weakCategories: [], // To be implemented with category tracking
-      strongCategories: [], // To be implemented with category tracking
-      streakDays: data?.streak_days || 0
+      totalQuestions: 0,
+      correctAnswers: 0,
+      accuracyPercentage: 0,
+      weakCategories: [],
+      strongCategories: [],
+      streakDays: 0
     };
   } catch (error) {
     console.error('Error getting user stats:', error);
@@ -284,41 +235,22 @@ export const getUserStats = async (userId: string) => {
  */
 export const getSystemStats = async () => {
   try {
-    // We'll use an edge function to get system stats to avoid TS errors 
-    // when accessing tables that may not exist in the database schema
-    const { data, error } = await supabase.functions.invoke('system-stats', {
-      body: {}
-    });
-    
-    if (error) {
-      console.error('Error fetching system stats:', error);
-      return {
-        totalUsers: 0,
-        premiumUsers: 0,
-        activeToday: 0,
-        totalQuestionsAnswered: 0,
-        totalQuestionsCorrect: 0,
-        examTypeDistribution: {}
-      };
-    }
+    // Use Firebase callable function
+    const data = await callFunction('getSystemStats', {});
     
     return data || {
       totalUsers: 0,
-      premiumUsers: 0, 
-      activeToday: 0,
-      totalQuestionsAnswered: 0,
-      totalQuestionsCorrect: 0,
-      examTypeDistribution: {}
+      activeUsers: 0,
+      questionsGenerated: 0,
+      questionsAnswered: 0
     };
   } catch (error) {
     console.error('Error getting system stats:', error);
     return {
       totalUsers: 0,
-      premiumUsers: 0,
-      activeToday: 0,
-      totalQuestionsAnswered: 0,
-      totalQuestionsCorrect: 0,
-      examTypeDistribution: {}
+      activeUsers: 0,
+      questionsGenerated: 0,
+      questionsAnswered: 0
     };
   }
 };
