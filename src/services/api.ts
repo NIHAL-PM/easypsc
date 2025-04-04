@@ -62,15 +62,85 @@ export const getApiKey = async (key: string): Promise<string | null> => {
   }
 };
 
+// Function to validate API key
+export const validateApiKey = async (keyType: string, value: string): Promise<boolean> => {
+  try {
+    // For Gemini API key
+    if (keyType === 'GEMINI_API_KEY') {
+      // Simple validation - just checking if it starts with 'AIza'
+      return value.startsWith('AIza');
+    }
+    
+    // For News API key - simple format validation
+    if (keyType === 'NEWS_API_KEY') {
+      return value.length > 20;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error validating API key:', error);
+    return false;
+  }
+};
+
 export const generateQuestions = async (options: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
     console.log('Generating questions with params:', options);
     
-    // Use Firebase callable function
-    const data = await callFunction('generateQuestions', options);
-    
-    console.log('Generated questions:', data?.questions);
-    return data?.questions || [];
+    // Get the API key
+    const apiKey = await getApiKey('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('Gemini API key not configured');
+    }
+
+    // Basic implementation for question generation using Gemini API
+    // In a production app, this would be a cloud function
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Generate ${options.count} multiple-choice questions for ${options.examType} exam with ${options.difficulty} difficulty in ${options.language || 'English'}. Format as JSON array with fields: id (string), text (question text), options (array of 4 strings), correctOption (number 0-3), explanation (string), category (subject area), difficulty (string). Example: [{"id":"q1","text":"What is...?","options":["A","B","C","D"],"correctOption":2,"explanation":"C is correct because...","category":"History","difficulty":"medium"}]`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('API response:', data);
+
+    let questionsText = '';
+    if (data.candidates && data.candidates[0]?.content?.parts) {
+      questionsText = data.candidates[0].content.parts[0].text;
+    }
+
+    // Extract JSON from the text response
+    let jsonMatch = questionsText.match(/\[.*\]/s);
+    if (!jsonMatch) {
+      throw new Error('Failed to parse questions from API response');
+    }
+
+    // Parse the JSON
+    try {
+      const questionsData = JSON.parse(jsonMatch[0]);
+      console.log('Generated questions:', questionsData);
+      return questionsData || [];
+    } catch (e) {
+      console.error('JSON parse error:', e);
+      throw new Error('Failed to parse question data');
+    }
   } catch (error) {
     console.error('Error in generateQuestions:', error);
     return [];
@@ -84,11 +154,44 @@ export const generateChat = async (userMessage: string): Promise<string | null> 
   try {
     console.log('Generating chat response');
     
-    // Use Firebase callable function
-    const data = await callFunction('generateChat', { prompt: userMessage });
+    // Get the API key
+    const apiKey = await getApiKey('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('Gemini API key not configured');
+    }
+
+    // Basic implementation for chat using Gemini API
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are an educational assistant helping with exam preparation. ${userMessage}`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
     
-    // Return the chat response
-    return data?.response || null;
+    let responseText = '';
+    if (data.candidates && data.candidates[0]?.content?.parts) {
+      responseText = data.candidates[0].content.parts[0].text;
+    }
+    
+    return responseText || null;
   } catch (error) {
     console.error('Error generating chat response:', error);
     return null;
@@ -154,10 +257,20 @@ export const sendChatMessage = async (examType: ExamType, userId: string, userNa
  */
 export const getNewsArticles = async (category: string = 'general') => {
   try {
-    // Use Firebase callable function
-    const data = await callFunction('getNews', { category });
+    const apiKey = await getApiKey('NEWS_API_KEY');
+    if (!apiKey) {
+      throw new Error('News API key not configured');
+    }
     
-    return data?.articles || [];
+    // Direct API call for simplicity - in production this would be a cloud function
+    const response = await fetch(`https://newsapi.org/v2/top-headlines?country=in&category=${category}&apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      throw new Error(`News API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.articles || [];
   } catch (error) {
     console.error('Error getting news articles:', error);
     return [];
@@ -235,14 +348,39 @@ export const getUserStats = async (userId: string): Promise<UserStats> => {
  */
 export const getSystemStats = async () => {
   try {
-    // Use Firebase callable function
-    const data = await callFunction('getSystemStats', {});
+    // Get user count
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const totalUsers = usersSnapshot.size;
     
-    return data || {
-      totalUsers: 0,
-      activeUsers: 0,
-      questionsGenerated: 0,
-      questionsAnswered: 0
+    // Get active users (active in last 24 hours)
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
+    const activeUsersQuery = query(
+      collection(db, "users"),
+      where("lastActive", ">=", oneDayAgo)
+    );
+    const activeUsersSnapshot = await getDocs(activeUsersQuery);
+    const activeUsers = activeUsersSnapshot.size;
+    
+    // Get questions data
+    const questionsSnapshot = await getDocs(collection(db, "user_progress"));
+    let questionsGenerated = 0;
+    let questionsAnswered = 0;
+    
+    questionsSnapshot.forEach(doc => {
+      const data = doc.data();
+      questionsAnswered += data.questionsAttempted || 0;
+    });
+    
+    // Estimate generated as 20% more than answered
+    questionsGenerated = Math.round(questionsAnswered * 1.2);
+    
+    return {
+      totalUsers,
+      activeUsers,
+      questionsGenerated,
+      questionsAnswered
     };
   } catch (error) {
     console.error('Error getting system stats:', error);

@@ -15,13 +15,15 @@ interface QuestionCardProps {
 
 const QuestionCard = ({ question: propQuestion }: QuestionCardProps) => {
   const { 
-    selectedOption, 
-    selectOption, 
-    submitAnswer, 
-    nextQuestion, 
+    selectedOption,
+    setSelectedOption,
     showExplanation,
+    setShowExplanation,
     user,
-    currentQuestion: storeQuestion
+    currentQuestion: storeQuestion,
+    selectOption,
+    submitAnswer,
+    nextQuestion
   } = useAppStore();
   
   // Use the question from props if provided, otherwise use from store

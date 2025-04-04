@@ -1,143 +1,247 @@
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useAppStore } from '@/lib/store';
-import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle, X, Package, Star, Sparkles, Lock, Check, BarChart4, Book } from 'lucide-react';
+import { useAppStore } from '@/lib/store';
+import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
-import { Loader2Icon, Crown, Sparkles, Zap, Infinity, Shield } from 'lucide-react';
 
 const PremiumUpgrade = () => {
-  const { user, upgradeUserToPremium } = useAppStore();
-  const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  const { user, upgradeUserToPremium } = useAppStore();
+  const [isLoading, setIsLoading] = useState(false);
   
-  const handleUpgrade = () => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You need to be logged in to upgrade.",
-        variant: "destructive"
-      });
-      navigate('/');
-      return;
-    }
+  // User already has premium
+  if (user?.isPremium) {
+    return (
+      <div className="container mx-auto px-4 py-12 max-w-3xl">
+        <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 shadow-lg border-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300"></div>
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2 text-2xl">
+              <Star className="h-6 w-6 text-amber-500 fill-amber-500" />
+              You&apos;re a Premium Member
+            </CardTitle>
+            <CardDescription>
+              Enjoy all the benefits of your premium membership!
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="w-24 h-24 bg-gradient-to-br from-amber-500 to-yellow-300 rounded-full mx-auto flex items-center justify-center">
+              <CheckCircle className="h-12 w-12 text-white" />
+            </div>
+            <h3 className="mt-6 text-xl font-semibold">Thank you for supporting our platform!</h3>
+            <p className="mt-2 text-muted-foreground">
+              You have unlimited access to all features and content.
+            </p>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button onClick={() => navigate('/')} className="px-8">
+              Return to Dashboard
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+  
+  const handleUpgrade = async () => {
+    setIsLoading(true);
     
-    setIsProcessing(true);
-    
-    // Simulate payment processing
     setTimeout(() => {
-      upgradeUserToPremium(user.id);
-      
-      setIsProcessing(false);
-      
-      toast({
-        title: "Upgrade Successful!",
-        description: "You now have access to premium features.",
-      });
-      
+      upgradeUserToPremium();
       navigate('/');
     }, 2000);
   };
   
-  const handleGoBack = () => {
-    navigate('/');
-  };
-  
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="container mx-auto py-12 px-4 max-w-md relative"
-    >
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-20 right-10 w-[30vw] h-[30vw] bg-gradient-to-br from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl hero-blob" style={{ animationDelay: '-2s' }}></div>
-        <div className="absolute bottom-20 left-10 w-[25vw] h-[25vw] bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl hero-blob"></div>
-      </div>
-      
-      <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-        <div className="p-6">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-              <Crown className="w-8 h-8 text-white" />
+    <div className="container mx-auto px-4 py-12">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-300">
+              Upgrade to Premium
+            </span>
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Unlock all features and take your exam preparation to the next level
+          </p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="h-full bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 shadow-md border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-slate-600" />
+                  Free Plan
+                </CardTitle>
+                <CardDescription>Current plan</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <span className="text-3xl font-bold">₹0</span>
+                  <span className="text-muted-foreground"> / month</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-emerald-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Generate 10 questions per month</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-emerald-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Basic question difficulty levels</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-emerald-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Single exam type selection</p>
+                  </div>
+                  <div className="flex items-start">
+                    <X className="h-5 w-5 text-slate-300 dark:text-slate-600 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-400 dark:text-slate-500">AI assistant chat (Limited)</p>
+                  </div>
+                  <div className="flex items-start">
+                    <X className="h-5 w-5 text-slate-300 dark:text-slate-600 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Advanced analytics</p>
+                  </div>
+                  <div className="flex items-start">
+                    <X className="h-5 w-5 text-slate-300 dark:text-slate-600 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Topic-specific question sets</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Card className="h-full bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-900 shadow-lg border-0 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300"></div>
+              <div className="absolute top-4 right-4">
+                <span className="bg-gradient-to-r from-amber-500 to-yellow-400 px-2.5 py-1 rounded-full text-xs font-semibold text-white">
+                  Recommended
+                </span>
+              </div>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+                  Premium Plan
+                </CardTitle>
+                <CardDescription>Unlock all features</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <span className="text-3xl font-bold">₹199</span>
+                  <span className="text-muted-foreground"> / month</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm"><span className="font-semibold">Unlimited</span> question generation</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm"><span className="font-semibold">Advanced</span> difficulty levels & customization</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">All exam types and subjects</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Unlimited AI assistant chat</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Detailed performance analytics</p>
+                  </div>
+                  <div className="flex items-start">
+                    <Check className="h-5 w-5 text-amber-500 mr-2 shrink-0 mt-0.5" />
+                    <p className="text-sm">Create topic-specific question sets</p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl border-0" 
+                  onClick={handleUpgrade}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Upgrade Now
+                    </div>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        </div>
+        
+        <div className="mt-16 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-semibold mb-8 text-center">
+            Premium Features in Detail
+          </h2>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white/60 dark:bg-slate-900/60 rounded-xl p-6 shadow-sm">
+              <div className="rounded-full w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
+                <Book className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Unlimited Content</h3>
+              <p className="text-sm text-muted-foreground">Generate unlimited practice questions across all subjects and difficulty levels.</p>
+            </div>
+            
+            <div className="bg-white/60 dark:bg-slate-900/60 rounded-xl p-6 shadow-sm">
+              <div className="rounded-full w-12 h-12 bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4">
+                <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Premium Features</h3>
+              <p className="text-sm text-muted-foreground">Access advanced difficulty levels, custom question sets, and personalized learning.</p>
+            </div>
+            
+            <div className="bg-white/60 dark:bg-slate-900/60 rounded-xl p-6 shadow-sm">
+              <div className="rounded-full w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                <BarChart4 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Detailed Analytics</h3>
+              <p className="text-sm text-muted-foreground">Track your progress with detailed statistics, identify weak areas, and focus your studies.</p>
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-center mb-2 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            Upgrade to Premium
-          </h2>
-          <p className="text-muted-foreground text-center mb-6">
-            Unlock unlimited access to all features and content.
-          </p>
+          <Separator className="my-12" />
           
-          <div className="space-y-4">
-            {/* Pricing Card */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-900 dark:to-indigo-950/30">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-medium text-indigo-700 dark:text-indigo-300">Premium Plan</h3>
-                <Badge className="font-medium bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0">Most Popular</Badge>
-              </div>
-              <p className="text-muted-foreground text-sm mb-4">
-                Unlimited questions, detailed analytics, and priority support.
-              </p>
-              <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">₹20/month</div>
-              <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400 mt-4">
-                <li className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4 text-indigo-500" />
-                  <span>Unlimited question generation</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-indigo-500" />
-                  <span>Detailed performance analytics</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-indigo-500" />
-                  <span>Priority customer support</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span>Ad-free experience</span>
-                </li>
-              </ul>
-              <Button 
-                className="w-full mt-5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all rounded-lg shadow-md hover:shadow-xl text-white" 
-                onClick={handleUpgrade}
-                disabled={isProcessing || (user && user.isPremium)}
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : user && user.isPremium ? (
-                  "Already Premium"
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-4 w-4" />
-                    Upgrade Now
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {/* Back Button */}
-            <Button 
-              variant="outline" 
-              className="w-full border-slate-200 dark:border-slate-700" 
-              onClick={handleGoBack}
-            >
-              Go Back
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Have questions about our premium plan? Contact us at support@easypsc.com
+            </p>
+            <Button variant="outline" onClick={() => navigate('/')}>
+              Back to Dashboard
             </Button>
           </div>
         </div>
-      </Card>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 

@@ -7,8 +7,7 @@ export const initializeDefaultApiKeys = async () => {
     const geminiKey = await getApiKey('GEMINI_API_KEY');
     if (!geminiKey) {
       console.log('Setting default Gemini API key...');
-      // You can set a default key here if needed
-      // await saveApiKey('GEMINI_API_KEY', 'default-key');
+      await saveApiKey('GEMINI_API_KEY', 'AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik');
     }
     
     // Check if NEWS_API_KEY exists

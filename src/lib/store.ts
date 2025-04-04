@@ -3,7 +3,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { ExamType, Question, User, UserStats } from '@/types';
-import { safeObjectEntries } from './utils';
+
+// Helper function to safely process object entries when object might be null/undefined
+export const safeObjectEntries = (obj: Record<string, any> | null | undefined): [string, any][] => {
+  if (!obj) return [];
+  return Object.entries(obj);
+};
 
 // Define the app state interface
 interface AppState {
@@ -36,6 +41,11 @@ interface AppState {
   updateUserStats: (correct: boolean, category?: string) => void;
   setPreferredLanguage: (language: string) => void;
   getUserStats: () => UserStats;
+  selectOption: (option: number) => void;
+  submitAnswer: () => void;
+  nextQuestion: () => void;
+  upgradeUserToPremium: () => void;
+  changeExamType: (examType: ExamType) => void;
 }
 
 // Create store with persistence
@@ -172,13 +182,13 @@ export const useAppStore = create<AppState>()(
         }
         
         // Use safeObjectEntries instead of direct Object.entries
-        const weakCategories = safeObjectEntries(user.weakCategories || {})
+        const weakCategories = safeObjectEntries(user.weakCategories)
           .sort((a, b) => a[1] - b[1])
           .slice(0, 3)
           .map(([name]) => name);
         
         // Use safeObjectEntries instead of direct Object.entries
-        const strongCategories = safeObjectEntries(user.strongCategories || {})
+        const strongCategories = safeObjectEntries(user.strongCategories)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
           .map(([name]) => name);
@@ -194,6 +204,66 @@ export const useAppStore = create<AppState>()(
           streakDays: user.currentStreak
         };
       },
+      
+      // Additional needed functions
+      
+      // Select an option
+      selectOption: (option) => set({ selectedOption: option }),
+      
+      // Submit an answer
+      submitAnswer: () => {
+        const { currentQuestion, selectedOption, user } = get();
+        
+        if (!currentQuestion || selectedOption === null || !user) return;
+        
+        const isCorrect = selectedOption === currentQuestion.correctOption;
+        
+        // Update stats
+        get().updateUserStats(isCorrect, currentQuestion.category);
+        
+        // Show explanation
+        set({ showExplanation: true });
+      },
+      
+      // Go to next question
+      nextQuestion: () => {
+        const { questions, currentQuestion } = get();
+        
+        if (!currentQuestion || !questions.length) return;
+        
+        const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
+        const nextIndex = (currentIndex + 1) % questions.length;
+        
+        set({
+          currentQuestion: questions[nextIndex],
+          selectedOption: null,
+          showExplanation: false
+        });
+      },
+      
+      // Upgrade user to premium
+      upgradeUserToPremium: () => set(state => {
+        if (!state.user) return {};
+        
+        return {
+          user: {
+            ...state.user,
+            isPremium: true
+          }
+        };
+      }),
+      
+      // Change exam type
+      changeExamType: (examType) => set(state => {
+        if (!state.user) return {};
+        
+        return {
+          user: {
+            ...state.user,
+            examType
+          }
+        };
+      })
     }),
     {
       name: 'easy-psc-app-state',
