@@ -108,15 +108,14 @@ export const useAppStore = create<AppState>()(
       
       // Set last question time
       setLastQuestionTime: (time) => set(state => {
-        if (state.user) {
-          return {
-            user: {
-              ...state.user,
-              lastQuestionTime: time
-            }
-          };
-        }
-        return {};
+        if (!state.user) return {};
+        
+        return {
+          user: {
+            ...state.user,
+            lastQuestionTime: time
+          }
+        };
       }),
       
       // Update user stats after answering a question
@@ -134,8 +133,8 @@ export const useAppStore = create<AppState>()(
         // Update category stats if provided
         if (category) {
           // Update weak categories
-          const weakCategories = { ...state.user.weakCategories } || {};
-          const strongCategories = { ...state.user.strongCategories } || {};
+          const weakCategories = { ...(state.user.weakCategories || {}) };
+          const strongCategories = { ...(state.user.strongCategories || {}) };
           
           if (correct) {
             // If correct, increment strong category count
@@ -154,16 +153,15 @@ export const useAppStore = create<AppState>()(
       
       // Set preferred language
       setPreferredLanguage: (language) => set(state => {
-        if (state.user) {
-          return {
-            preferredLanguage: language,
-            user: {
-              ...state.user,
-              preferredLanguage: language
-            }
-          };
-        }
-        return { preferredLanguage: language };
+        if (!state.user) return { preferredLanguage: language };
+        
+        return {
+          preferredLanguage: language,
+          user: {
+            ...state.user,
+            preferredLanguage: language
+          }
+        };
       }),
       
       // Get user stats for profile display

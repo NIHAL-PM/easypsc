@@ -2,6 +2,7 @@ import { db, callFunction, auth } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { ExamType, Question, QuestionDifficulty, User, UserStats } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/database.types';
 
 interface GenerateQuestionsOptions {
   examType: ExamType;
@@ -27,9 +28,9 @@ export const saveApiKey = async (key: string, value: string) => {
             key,
             value,
             user_id: auth.currentUser.uid,
-            updated_at: new Date()
+            updated_at: new Date().toISOString()
           },
-          { onConflict: 'key' }
+          { onConflict: 'key,user_id' }
         );
         
       if (error) throw error;
@@ -59,7 +60,7 @@ export const getApiKey = async (key: string): Promise<string | null> => {
         .select('value')
         .eq('key', key)
         .eq('user_id', auth.currentUser.uid)
-        .single();
+        .maybeSingle();
         
       if (error) {
         console.error('Error fetching API key from Supabase:', error);
