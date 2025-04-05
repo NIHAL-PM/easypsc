@@ -2,9 +2,20 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ExamType, NewsItem } from '@/types';
 
-// This could be replaced with an actual API key from a news service
-// For now, we'll use a free API that doesn't require authentication
-const NEWS_API_URL = 'https://saurav.tech/NewsAPI/';
+// We'll use a variety of news APIs for redundancy and freshness
+const NEWS_API_SOURCES = [
+  'https://saurav.tech/NewsAPI/top-headlines/category/general/in.json',
+  'https://saurav.tech/NewsAPI/top-headlines/category/business/in.json',
+  'https://saurav.tech/NewsAPI/top-headlines/category/science/in.json',
+  'https://saurav.tech/NewsAPI/top-headlines/category/technology/in.json',
+  // Add more news sources or categories as needed
+];
+
+// Try alternative news APIs if the primary one fails
+const FALLBACK_NEWS_SOURCES = [
+  'https://api.nytimes.com/svc/topstories/v2/world.json?api-key=yourkey', // Replace with actual API keys in production
+  'https://newsapi.org/v2/top-headlines?country=in&apiKey=yourkey', // Replace with actual API keys in production
+];
 
 interface ApiNewsItem {
   title: string;
@@ -72,30 +83,51 @@ const convertApiNewsToNewsItem = (item: ApiNewsItem): NewsItem => {
 
 export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
   try {
-    // Use different categories to give varied news
-    // This free API gives news from different sources and categories
-    const endpoints = [
-      `${NEWS_API_URL}/top-headlines/category/general/in.json`,
-      `${NEWS_API_URL}/top-headlines/category/business/in.json`,
-      `${NEWS_API_URL}/top-headlines/category/science/in.json`,
-      `${NEWS_API_URL}/top-headlines/category/technology/in.json`
-    ];
+    // Try to get cached news first (if they're from today)
+    const cachedNews = getCachedNews(examType);
+    const isCacheValid = isCacheFromToday();
     
-    const fetchPromises = endpoints.map(endpoint => 
-      fetch(endpoint).then(res => res.json())
+    // Return cached news if they're from today and we have them
+    if (cachedNews.length > 0 && isCacheValid) {
+      console.log('Using cached news from today');
+      return cachedNews;
+    }
+    
+    // Cache expired or empty, fetch fresh news
+    const fetchPromises = NEWS_API_SOURCES.map(endpoint => 
+      fetch(endpoint)
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to fetch from ${endpoint}`);
+          return res.json();
+        })
+        .catch(err => {
+          console.warn(`Error fetching news from ${endpoint}:`, err);
+          return { articles: [] };
+        })
     );
     
-    const results = await Promise.all(fetchPromises);
+    const results = await Promise.allSettled(fetchPromises);
     let allNews: ApiNewsItem[] = [];
     
+    // Process successful results
     results.forEach(result => {
-      if (result.articles && Array.isArray(result.articles)) {
-        allNews = [...allNews, ...result.articles];
+      if (result.status === 'fulfilled' && result.value.articles && Array.isArray(result.value.articles)) {
+        allNews = [...allNews, ...result.value.articles];
       }
     });
     
+    // If we couldn't get any news, try fallback sources
+    if (allNews.length === 0) {
+      console.warn('Primary news sources failed, trying fallbacks');
+      // Implementation for fallback sources would go here
+      // For now, we'll return an empty array or mock data
+    }
+    
     // Convert all news items to our format
     const newsItems = allNews.map(convertApiNewsToNewsItem);
+    
+    // Cache the new results with today's date
+    cacheNews(newsItems);
     
     // If examType is provided, filter news relevant to that exam
     if (examType) {
@@ -107,28 +139,33 @@ export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
     return newsItems;
   } catch (error) {
     console.error('Error fetching news:', error);
-    return [];
+    // Return cached news as fallback, even if expired
+    return getCachedNews(examType);
   }
 };
 
-// Store news in localStorage for caching
+// Check if the news cache is from today
+const isCacheFromToday = (): boolean => {
+  try {
+    const lastCached = localStorage.getItem('news_cached_at');
+    if (!lastCached) return false;
+    
+    const cachedDate = new Date(lastCached).toDateString();
+    const today = new Date().toDateString();
+    return cachedDate === today;
+  } catch (error) {
+    console.error('Error checking cache date:', error);
+    return false;
+  }
+};
+
+// Get cached news
 export const getCachedNews = (examType?: ExamType): NewsItem[] => {
   try {
     const cachedNews = localStorage.getItem('cached_news');
     if (!cachedNews) return [];
     
     const news: NewsItem[] = JSON.parse(cachedNews);
-    
-    // Check if the cache is from today
-    const lastCached = localStorage.getItem('news_cached_at');
-    if (lastCached) {
-      const cachedDate = new Date(lastCached).toDateString();
-      const today = new Date().toDateString();
-      if (cachedDate !== today) {
-        // Cache is old, don't use it
-        return [];
-      }
-    }
     
     if (examType) {
       return news.filter(item => item.relevantForExams.includes(examType));
@@ -141,6 +178,7 @@ export const getCachedNews = (examType?: ExamType): NewsItem[] => {
   }
 };
 
+// Store news in localStorage with current date
 export const cacheNews = (news: NewsItem[]) => {
   try {
     localStorage.setItem('cached_news', JSON.stringify(news));

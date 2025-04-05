@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,6 +16,7 @@ import ProfileCard from '@/components/ProfileCard';
 import ChatMode from '@/components/ChatMode';
 import ChatRoom from '@/components/ChatRoom';
 import CurrentAffairs from '@/components/CurrentAffairs';
+import LanguageSelector from '@/components/LanguageSelector';
 import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users, Newspaper, Languages } from 'lucide-react';
 import { ExamType, Language } from '@/types';
 
@@ -83,6 +85,23 @@ const Index = () => {
     validateName(randomName);
     validateEmail(`${emailPrefix}@${domain}`);
   };
+  
+  // Verify we're getting fresh news daily
+  useEffect(() => {
+    // Check if the news cache is from today
+    const lastCached = localStorage.getItem('news_cached_at');
+    if (!lastCached) return;
+    
+    const cachedDate = new Date(lastCached).toDateString();
+    const today = new Date().toDateString();
+    
+    if (cachedDate !== today && activeTab === 'news') {
+      toast({
+        title: "Updating news",
+        description: "Fetching today's current affairs...",
+      });
+    }
+  }, [activeTab, toast]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
@@ -186,10 +205,10 @@ const Index = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="English">English</SelectItem>
-                      <SelectItem value="Hindi">Hindi</SelectItem>
-                      <SelectItem value="Tamil">Tamil</SelectItem>
-                      <SelectItem value="Telugu">Telugu</SelectItem>
-                      <SelectItem value="Malayalam">Malayalam</SelectItem>
+                      <SelectItem value="Hindi">हिंदी</SelectItem>
+                      <SelectItem value="Tamil">தமிழ்</SelectItem>
+                      <SelectItem value="Telugu">తెలుగు</SelectItem>
+                      <SelectItem value="Malayalam">മലയാളം</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -236,7 +255,10 @@ const Index = () => {
         </div>
       ) : (
         <div className="container mx-auto py-6 px-4">
-          <AnimatedLogo />
+          <div className="flex justify-between items-center mb-6">
+            <AnimatedLogo />
+            <LanguageSelector />
+          </div>
           
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">

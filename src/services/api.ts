@@ -58,7 +58,7 @@ export const generateQuestions = async ({
       "difficulty": "${difficulty}"
     }`;
     
-    console.log('Calling Gemini API with prompt:', prompt);
+    console.log(`Calling Gemini API with prompt for ${count} questions in ${language}`);
     
     // Call the Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -92,7 +92,7 @@ export const generateQuestions = async ({
     }
     
     const data = await response.json();
-    console.log('Gemini API response:', data);
+    console.log(`Received response from Gemini API for ${language} questions`);
     
     // Extract the content from the response
     const jsonContent = data.candidates[0].content.parts[0].text;
@@ -102,22 +102,31 @@ export const generateQuestions = async ({
     const match = jsonRegex.exec(jsonContent);
     
     if (!match) {
+      console.error('Failed to parse JSON response:', jsonContent);
       throw new Error('Failed to parse JSON response from API');
     }
     
     const questionsJson = match[1]?.trim() || match[2]?.trim() || match[0]?.trim();
-    let questions = JSON.parse(questionsJson) as Question[];
+    let questions: Question[];
     
-    // Ensure each question has a unique ID
+    try {
+      questions = JSON.parse(questionsJson) as Question[];
+    } catch (error) {
+      console.error('JSON parse error:', error, 'Raw JSON:', questionsJson);
+      throw new Error('Invalid JSON response from API');
+    }
+    
+    // Ensure each question has a unique ID and correct difficulty type
     questions = questions.map(q => ({
       ...q,
-      id: q.id || uuidv4()
+      id: q.id || uuidv4(),
+      difficulty: q.difficulty as QuestionDifficulty
     }));
     
     // Filter out questions that have already been asked
     const filteredQuestions = questions.filter(q => !askedQuestionIds.includes(q.id));
     
-    console.log(`Generated ${questions.length} questions, filtered to ${filteredQuestions.length} new questions`);
+    console.log(`Generated ${questions.length} ${language} questions, filtered to ${filteredQuestions.length} new questions`);
     
     return filteredQuestions.slice(0, count);
   } catch (error) {
