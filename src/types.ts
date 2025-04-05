@@ -54,4 +54,14 @@ export interface AppState {
   isLoading: boolean;
   showExplanation: boolean;
   askedQuestionIds: string[];
+  chatMessages: ChatMessage[];
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: Date;
+  examType: ExamType;
 }

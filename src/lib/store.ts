@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, ExamType, Question, User, UserStats } from '@/types';
+import { AppState, ChatMessage, ExamType, Question, User, UserStats } from '@/types';
 
 type AppStoreWithActions = AppState & {
   login: (name: string, email: string, examType: ExamType) => void;
@@ -19,6 +19,8 @@ type AppStoreWithActions = AppState & {
   getUserStats: () => UserStats;
   changeExamType: (examType: ExamType) => void;
   setLastQuestionTime: (time: number) => void;
+  sendChatMessage: (content: string) => void;
+  getChatMessagesByExamType: (examType: ExamType) => ChatMessage[];
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -33,6 +35,7 @@ export const useAppStore = create<AppStoreWithActions>()(
       isLoading: false,
       showExplanation: false,
       askedQuestionIds: [],
+      chatMessages: [],
 
       // Actions
       login: (name, email, examType) => {
@@ -247,6 +250,30 @@ export const useAppStore = create<AppStoreWithActions>()(
           user: updatedUser,
           allUsers: updatedAllUsers
         });
+      },
+
+      sendChatMessage: (content) => {
+        const { user, chatMessages } = get();
+        
+        if (!user || !content.trim()) return;
+
+        const newMessage: ChatMessage = {
+          id: uuidv4(),
+          senderId: user.id,
+          senderName: user.name,
+          content: content.trim(),
+          timestamp: new Date(),
+          examType: user.examType
+        };
+
+        set({ 
+          chatMessages: [...chatMessages, newMessage]
+        });
+      },
+
+      getChatMessagesByExamType: (examType) => {
+        const { chatMessages } = get();
+        return chatMessages.filter(message => message.examType === examType);
       }
     }),
     {
