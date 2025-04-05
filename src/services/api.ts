@@ -1,4 +1,5 @@
-import { Question, ExamType, QuestionDifficulty } from '@/types';
+
+import { Question, ExamType, QuestionDifficulty, Language } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface GenerateQuestionsOptions {
@@ -6,6 +7,7 @@ interface GenerateQuestionsOptions {
   difficulty: QuestionDifficulty;
   count: number;
   askedQuestionIds?: string[];
+  language?: Language;
 }
 
 // Hard-coded API key - in a real app, this would come from environment variables
@@ -18,7 +20,8 @@ export const generateQuestions = async ({
   examType,
   difficulty,
   count,
-  askedQuestionIds = []
+  askedQuestionIds = [],
+  language = 'English'
 }: GenerateQuestionsOptions): Promise<Question[]> => {
   try {
     if (!GEMINI_API_KEY) {
@@ -29,12 +32,13 @@ export const generateQuestions = async ({
     // Prepare the prompt for Gemini with specific instruction not to repeat questions
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
-    Generate questions in English.
+    Generate questions in ${language}.
     
     Critical requirements:
     1. Generate completely new and unique questions that have not been used before.
     2. Each question must have a different topic/concept to ensure variety.
     3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
+    4. All questions and options MUST be in ${language} language.
     
     Format each question with:
     1. Question text

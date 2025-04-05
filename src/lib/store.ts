@@ -1,8 +1,7 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, ChatMessage, ExamType, Question, User, UserStats } from '@/types';
+import { AppState, ChatMessage, ExamType, Language, Question, User, UserStats } from '@/types';
 
 type AppStoreWithActions = AppState & {
   login: (name: string, email: string, examType: ExamType) => void;
@@ -21,6 +20,7 @@ type AppStoreWithActions = AppState & {
   setLastQuestionTime: (time: number) => void;
   sendChatMessage: (content: string) => void;
   getChatMessagesByExamType: (examType: ExamType) => ChatMessage[];
+  setSelectedLanguage: (language: Language) => void;
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -36,6 +36,7 @@ export const useAppStore = create<AppStoreWithActions>()(
       showExplanation: false,
       askedQuestionIds: [],
       chatMessages: [],
+      selectedLanguage: 'English',
 
       // Actions
       login: (name, email, examType) => {
@@ -274,7 +275,9 @@ export const useAppStore = create<AppStoreWithActions>()(
       getChatMessagesByExamType: (examType) => {
         const { chatMessages } = get();
         return chatMessages.filter(message => message.examType === examType);
-      }
+      },
+
+      setSelectedLanguage: (language: Language) => set({ selectedLanguage: language }),
     }),
     {
       name: 'ai-exam-prep-storage',

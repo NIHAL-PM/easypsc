@@ -55,6 +55,7 @@ export interface AppState {
   showExplanation: boolean;
   askedQuestionIds: string[];
   chatMessages: ChatMessage[];
+  selectedLanguage: Language;
 }
 
 export interface ChatMessage {

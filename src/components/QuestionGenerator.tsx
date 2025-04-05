@@ -8,10 +8,11 @@ import { useToast } from '@/components/ui/use-toast';
 import { generateQuestions, trackUserActivity } from '@/services/api';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame } from 'lucide-react';
+import { Loader2, BrainCircuit, Sparkles, ShieldCheck, ShieldAlert, Flame, Languages } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuestionStore } from '@/services/questionStore';
-import { QuestionDifficulty } from '@/types';
+import { QuestionDifficulty, Language } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const QuestionGenerator = () => {
   const { 
@@ -21,7 +22,9 @@ const QuestionGenerator = () => {
     setIsLoading, 
     isLoading, 
     askedQuestionIds,
-    setLastQuestionTime
+    setLastQuestionTime,
+    selectedLanguage,
+    setSelectedLanguage
   } = useAppStore();
   
   const { toast } = useToast();
@@ -82,7 +85,8 @@ const QuestionGenerator = () => {
       // Track user action
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
-        difficulty
+        difficulty,
+        language: selectedLanguage
       });
       
       // Generate 5 questions for premium, or limited questions for free users
@@ -92,7 +96,8 @@ const QuestionGenerator = () => {
         examType: user.examType,
         difficulty: difficulty,
         count,
-        askedQuestionIds // Pass the IDs of questions that have already been asked
+        askedQuestionIds, // Pass the IDs of questions that have already been asked
+        language: selectedLanguage
       });
       
       if (generatedQuestions.length === 0) {
@@ -219,6 +224,28 @@ const QuestionGenerator = () => {
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
+                <Languages className="w-4 h-4 text-indigo-500" />
+                <span>Question Language</span>
+              </Label>
+              <Select 
+                value={selectedLanguage} 
+                onValueChange={(value) => setSelectedLanguage(value as Language)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="Hindi">Hindi</SelectItem>
+                  <SelectItem value="Tamil">Tamil</SelectItem>
+                  <SelectItem value="Telugu">Telugu</SelectItem>
+                  <SelectItem value="Malayalam">Malayalam</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

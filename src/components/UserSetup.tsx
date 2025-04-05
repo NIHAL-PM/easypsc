@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ExamType, User } from '@/types';
+import { ExamType, Language, User } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,6 +15,7 @@ const UserSetup = ({ onUserCreate }: UserSetupProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
+  const [language, setLanguage] = useState<Language>('English');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,6 +75,22 @@ const UserSetup = ({ onUserCreate }: UserSetupProps) => {
             <SelectItem value="PSC">PSC</SelectItem>
             <SelectItem value="SSC">SSC</SelectItem>
             <SelectItem value="Banking">Banking</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div>
+        <Label htmlFor="language">Preferred Language</Label>
+        <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+          <SelectTrigger id="language">
+            <SelectValue placeholder="Select language" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="English">English</SelectItem>
+            <SelectItem value="Hindi">Hindi</SelectItem>
+            <SelectItem value="Tamil">Tamil</SelectItem>
+            <SelectItem value="Telugu">Telugu</SelectItem>
+            <SelectItem value="Malayalam">Malayalam</SelectItem>
           </SelectContent>
         </Select>
       </div>
