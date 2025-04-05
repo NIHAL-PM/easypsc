@@ -65,3 +65,15 @@ export interface ChatMessage {
   timestamp: Date;
   examType: ExamType;
 }
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  imageUrl?: string;
+  category: string;
+  relevantForExams: ExamType[];
+}

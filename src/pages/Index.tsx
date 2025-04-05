@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,7 +14,8 @@ import AnimatedLogo from '@/components/AnimatedLogo';
 import ProfileCard from '@/components/ProfileCard';
 import ChatMode from '@/components/ChatMode';
 import ChatRoom from '@/components/ChatRoom';
-import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users } from 'lucide-react';
+import CurrentAffairs from '@/components/CurrentAffairs';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users, Newspaper } from 'lucide-react';
 import { ExamType } from '@/types';
 
 const Index = () => {
@@ -25,7 +25,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
-  const [activeTab, setActiveTab] = useState<'questions' | 'chat' | 'room'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'chat' | 'room' | 'news'>('questions');
   
   // Validation for form
   const [isNameValid, setIsNameValid] = useState(true);
@@ -219,8 +219,8 @@ const Index = () => {
             </div>
             
             <div className="md:col-span-2 space-y-6">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'room')} className="w-full">
-                <TabsList className="grid grid-cols-3 mb-4">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'room' | 'news')} className="w-full">
+                <TabsList className="grid grid-cols-4 mb-4">
                   <TabsTrigger value="questions" className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
                     Practice Questions
@@ -232,6 +232,10 @@ const Index = () => {
                   <TabsTrigger value="room" className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Exam Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="news" className="flex items-center gap-2">
+                    <Newspaper className="h-4 w-4" />
+                    Current Affairs
                   </TabsTrigger>
                 </TabsList>
                 
@@ -249,6 +253,10 @@ const Index = () => {
 
                 <TabsContent value="room">
                   <ChatRoom />
+                </TabsContent>
+                
+                <TabsContent value="news">
+                  <CurrentAffairs />
                 </TabsContent>
               </Tabs>
             </div>
