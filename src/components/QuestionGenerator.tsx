@@ -92,6 +92,8 @@ const QuestionGenerator = () => {
       // Generate 5 questions for premium, or limited questions for free users
       const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
       
+      console.log('Generating questions with language:', selectedLanguage);
+      
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
         difficulty: difficulty,

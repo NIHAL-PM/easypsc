@@ -33,7 +33,8 @@ const UserSetup = ({ onUserCreate }: UserSetupProps) => {
       monthlyQuestionsRemaining: 10,
       currentStreak: 0,
       lastActive: null,
-      lastQuestionTime: null
+      lastQuestionTime: null,
+      preferredLanguage: language // Save preferred language to user
     };
     
     onUserCreate(newUser);

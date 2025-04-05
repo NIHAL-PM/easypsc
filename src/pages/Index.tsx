@@ -15,16 +15,17 @@ import ProfileCard from '@/components/ProfileCard';
 import ChatMode from '@/components/ChatMode';
 import ChatRoom from '@/components/ChatRoom';
 import CurrentAffairs from '@/components/CurrentAffairs';
-import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users, Newspaper } from 'lucide-react';
-import { ExamType } from '@/types';
+import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users, Newspaper, Languages } from 'lucide-react';
+import { ExamType, Language } from '@/types';
 
 const Index = () => {
-  const { user, login, currentQuestion } = useAppStore();
+  const { user, login, currentQuestion, setSelectedLanguage } = useAppStore();
   const { toast } = useToast();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [examType, setExamType] = useState<ExamType>('UPSC');
+  const [language, setLanguage] = useState<Language>('English');
   const [activeTab, setActiveTab] = useState<'questions' | 'chat' | 'room' | 'news'>('questions');
   
   // Validation for form
@@ -56,13 +57,14 @@ const Index = () => {
     }
     
     login(name, email, examType);
+    setSelectedLanguage(language); // Set language on login
     
     toast({
       title: "Welcome!",
       description: `You've joined as a ${examType} aspirant.`,
     });
   };
-  
+
   // Generate a random name for the user
   const generateRandomUser = () => {
     const randomNames = [
@@ -165,6 +167,29 @@ const Index = () => {
                       <SelectItem value="PSC">PSC</SelectItem>
                       <SelectItem value="SSC">SSC</SelectItem>
                       <SelectItem value="Banking">Banking</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Add language selection to signup */}
+                <div className="space-y-2">
+                  <Label htmlFor="language">
+                    Preferred Language
+                  </Label>
+                  <Select
+                    value={language}
+                    onValueChange={(value) => setLanguage(value as Language)}
+                  >
+                    <SelectTrigger id="language" className="pl-10 relative">
+                      <Languages className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Hindi">Hindi</SelectItem>
+                      <SelectItem value="Tamil">Tamil</SelectItem>
+                      <SelectItem value="Telugu">Telugu</SelectItem>
+                      <SelectItem value="Malayalam">Malayalam</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

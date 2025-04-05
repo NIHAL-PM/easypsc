@@ -10,7 +10,7 @@ import AdminPanel from "./components/AdminPanel";
 import { useEffect } from "react";
 import { useToast } from "./components/ui/use-toast";
 import { useAppStore } from "./lib/store";
-import { isGeminiApiKeyConfigured, getGeminiApiKey } from "./lib/env";
+import { isGeminiApiKeyConfigured } from "./lib/env";
 
 // User auth check component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,6 +42,9 @@ const App = () => {
         });
       }
     }
+
+    // Make sure we update the type definition for QuestionDifficulty in AdminPanel
+    console.log("Checking allowed question difficulty values:", ["easy", "medium", "hard"]);
 
     // Add event listener for responsive design testing
     const handleResize = () => {

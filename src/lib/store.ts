@@ -46,7 +46,7 @@ export const useAppStore = create<AppStoreWithActions>()(
         const existingUser = allUsers.find(user => user.email === email);
         
         if (existingUser) {
-          // Update last active timestamp
+          // Update last active timestamp and set selected language from user preferences
           const updatedUser = {
             ...existingUser,
             lastActive: new Date()
@@ -54,7 +54,8 @@ export const useAppStore = create<AppStoreWithActions>()(
           
           set({ 
             user: updatedUser,
-            allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u)
+            allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u),
+            selectedLanguage: updatedUser.preferredLanguage || 'English' // Set language from user preferences
           });
           return;
         }
@@ -71,12 +72,14 @@ export const useAppStore = create<AppStoreWithActions>()(
           questionsCorrect: 0,
           currentStreak: 0,
           lastActive: new Date(),
-          lastQuestionTime: null
+          lastQuestionTime: null,
+          preferredLanguage: 'English' // Set default language
         };
         
         set(state => ({ 
           user: newUser,
-          allUsers: [...state.allUsers, newUser]
+          allUsers: [...state.allUsers, newUser],
+          selectedLanguage: newUser.preferredLanguage || 'English' // Set language from user preferences
         }));
       },
       
@@ -277,7 +280,24 @@ export const useAppStore = create<AppStoreWithActions>()(
         return chatMessages.filter(message => message.examType === examType);
       },
 
-      setSelectedLanguage: (language: Language) => set({ selectedLanguage: language }),
+      setSelectedLanguage: (language: Language) => {
+        const { user, allUsers } = get();
+        
+        set({ selectedLanguage: language });
+        
+        // Also update user preferences if logged in
+        if (user) {
+          const updatedUser = {
+            ...user,
+            preferredLanguage: language
+          };
+          
+          set({
+            user: updatedUser,
+            allUsers: allUsers.map(u => u.id === user.id ? updatedUser : u)
+          });
+        }
+      },
     }),
     {
       name: 'ai-exam-prep-storage',
