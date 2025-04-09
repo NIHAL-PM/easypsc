@@ -1,6 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { ExamType, NewsItem } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 // We'll use a variety of news APIs for redundancy and freshness
 const NEWS_API_SOURCES = [
@@ -27,6 +28,10 @@ interface ApiNewsItem {
     name: string;
   };
 }
+
+// Cache configuration
+const CACHE_REFRESH_INTERVAL = 3 * 60 * 1000; // 3 minutes in milliseconds
+let lastFetchAttempt = 0; // Track last fetch attempt to avoid hammering APIs
 
 const mapToExamTypes = (title: string, description: string): ExamType[] => {
   const content = (title + ' ' + description).toLowerCase();
@@ -89,30 +94,52 @@ const isCacheOutdated = (): boolean => {
     
     const cachedTime = new Date(lastCached).getTime();
     const currentTime = new Date().getTime();
-    const threeMinutesInMillis = 3 * 60 * 1000; // 3 minutes in milliseconds
     
-    return (currentTime - cachedTime) > threeMinutesInMillis;
+    return (currentTime - cachedTime) > CACHE_REFRESH_INTERVAL;
   } catch (error) {
     console.error('Error checking cache timestamp:', error);
     return true;
   }
 };
 
+// Check if we should attempt a new fetch (to prevent hammering APIs on errors)
+const shouldAttemptFetch = (): boolean => {
+  const currentTime = new Date().getTime();
+  // Only attempt a new fetch if it's been at least 30 seconds since the last attempt
+  const shouldFetch = (currentTime - lastFetchAttempt) > 30000;
+  
+  if (shouldFetch) {
+    lastFetchAttempt = currentTime;
+  }
+  
+  return shouldFetch;
+};
+
 export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
   try {
+    console.log('Fetching news, checking cache first...');
     // Try to get cached news first
     const cachedNews = getCachedNews(examType);
     
-    // Return cached news if they're from within the last hour
+    // Return cached news if they're from within the cache interval
     if (cachedNews.length > 0 && !isCacheOutdated()) {
-      console.log('Using cached news from within the last hour');
+      console.log('Using cached news from within the last 3 minutes');
+      return cachedNews;
+    }
+    
+    // Don't hammer APIs if we've tried recently and failed
+    if (!shouldAttemptFetch() && cachedNews.length > 0) {
+      console.log('Recent fetch attempt failed, using cached data');
       return cachedNews;
     }
     
     // Cache outdated or empty, fetch fresh news
-    console.log('Fetching fresh news');
+    console.log('Cache outdated or empty. Fetching fresh news...');
     const fetchPromises = NEWS_API_SOURCES.map(endpoint => 
-      fetch(endpoint)
+      fetch(endpoint, { 
+        headers: { 'Cache-Control': 'no-cache' },
+        cache: 'no-store'
+      })
         .then(res => {
           if (!res.ok) throw new Error(`Failed to fetch from ${endpoint}`);
           return res.json();
@@ -137,14 +164,20 @@ export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
     if (allNews.length === 0) {
       console.warn('Primary news sources failed, trying fallbacks');
       // Implementation for fallback sources would go here
-      // For now, we'll return an empty array or mock data
+      // For now, we'll return cached news as last resort
+      if (cachedNews.length > 0) {
+        return cachedNews;
+      }
     }
     
     // Convert all news items to our format
     const newsItems = allNews.map(convertApiNewsToNewsItem);
     
     // Cache the new results with current timestamp
-    cacheNews(newsItems);
+    if (newsItems.length > 0) {
+      cacheNews(newsItems);
+      console.log(`Successfully fetched ${newsItems.length} new news items`);
+    }
     
     // If examType is provided, filter news relevant to that exam
     if (examType) {
@@ -194,4 +227,32 @@ export const cacheNews = (news: NewsItem[]) => {
 // Function to check if news should be refreshed (useful for components to call)
 export const shouldRefreshNews = (): boolean => {
   return isCacheOutdated();
+};
+
+// Function to force a refresh of the news cache
+export const forceRefreshNews = async (examType?: ExamType): Promise<NewsItem[]> => {
+  // Clear the cache timestamp to force a refresh
+  localStorage.removeItem('news_cached_at');
+  // Reset the last fetch attempt to allow immediate fetching
+  lastFetchAttempt = 0;
+  
+  // Fetch fresh news
+  return await fetchNews(examType);
+};
+
+// Get the time remaining until next auto-refresh
+export const getTimeUntilNextRefresh = (): number => {
+  try {
+    const lastCached = localStorage.getItem('news_cached_at');
+    if (!lastCached) return 0;
+    
+    const cachedTime = new Date(lastCached).getTime();
+    const currentTime = new Date().getTime();
+    const timeElapsed = currentTime - cachedTime;
+    
+    // Return time remaining in seconds
+    return Math.max(0, Math.round((CACHE_REFRESH_INTERVAL - timeElapsed) / 1000));
+  } catch (error) {
+    return 0;
+  }
 };

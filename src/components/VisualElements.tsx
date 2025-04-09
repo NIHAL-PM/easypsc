@@ -58,7 +58,7 @@ const VisualElements = ({
     if (type === 'minimal') return [];
     
     const countMap: Record<string, number> = { 'default': 10, 'intense': 20 };
-    const densityMultiplier: Record<string, number> = { 'low': 0.5, 'medium': 1, 'high': 1.8 };
+    // Fix the type comparison here - don't compare type values directly, use a conditional
     const count = Math.floor(countMap[type === 'minimal' ? 'default' : type] * densityMultiplier[density]);
     
     return Array.from({ length: count }).map((_, i) => ({
@@ -81,7 +81,7 @@ const VisualElements = ({
       shape: i % 3 === 0 ? 'circle' : i % 3 === 1 ? 'triangle' : 'square',
       size: randomPosition(30, 60),
       top: randomPosition(10, 90),
-      left: randomPosition(5, 95),
+      left: randomPosition(10, 95),
       rotation: randomPosition(0, 360),
       delay: i * 0.3,
       duration: randomPosition(25, 40),
