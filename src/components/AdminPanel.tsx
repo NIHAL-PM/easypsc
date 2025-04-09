@@ -181,7 +181,7 @@ const AdminPanel = () => {
       correctOption: newQuestion.correctOption || 0,
       explanation: newQuestion.explanation || '',
       category: newQuestion.category || 'General',
-      difficulty: (newQuestion.difficulty as QuestionDifficulty) || 'medium'
+      difficulty: toQuestionDifficulty(newQuestion.difficulty as string || 'medium')
     });
     
     setNewQuestion({

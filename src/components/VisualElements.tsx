@@ -5,9 +5,14 @@ import { motion } from 'framer-motion';
 interface VisualElementsProps {
   type?: 'default' | 'minimal' | 'intense';
   color?: 'indigo' | 'purple' | 'pink' | 'gradient';
+  density?: 'low' | 'medium' | 'high';
 }
 
-const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElementsProps) => {
+const VisualElements = ({ 
+  type = 'default', 
+  color = 'gradient', 
+  density = 'medium' 
+}: VisualElementsProps) => {
   const getColor = (colorName: string, opacity: number = 0.3) => {
     switch (colorName) {
       case 'indigo':
@@ -29,7 +34,15 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
   
   // Compute blob positions and animations only once
   const blobs = useMemo(() => {
-    const count = type === 'minimal' ? 2 : type === 'intense' ? 6 : 4;
+    const countMap = { 
+      'minimal': 2, 
+      'default': 4, 
+      'intense': 6 
+    };
+    
+    const densityMultiplier = { 'low': 0.7, 'medium': 1, 'high': 1.5 };
+    const count = Math.floor(countMap[type] * densityMultiplier[density]);
+    
     return Array.from({ length: count }).map((_, i) => ({
       id: `blob-${i}`,
       size: randomPosition(150, 350),
@@ -37,18 +50,41 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
       left: randomPosition(-50, 100),
       delay: i * 0.2,
       duration: randomPosition(20, 40),
+      rotate: randomPosition(0, 360),
     }));
-  }, [type]);
+  }, [type, density]);
   
   const particles = useMemo(() => {
-    if (type !== 'intense') return [];
-    return Array.from({ length: 20 }).map((_, i) => ({
+    if (type === 'minimal') return [];
+    
+    const countMap = { 'default': 10, 'intense': 20 };
+    const densityMultiplier = { 'low': 0.5, 'medium': 1, 'high': 1.8 };
+    const count = Math.floor(countMap[type === 'minimal' ? 'default' : type] * densityMultiplier[density]);
+    
+    return Array.from({ length: count }).map((_, i) => ({
       id: `particle-${i}`,
       size: randomPosition(2, 6),
       top: randomPosition(10, 90),
       left: randomPosition(10, 90),
       delay: i * 0.1,
       duration: randomPosition(15, 25),
+    }));
+  }, [type, density]);
+  
+  // Generate decorative shapes
+  const shapes = useMemo(() => {
+    if (type === 'minimal') return [];
+    
+    const count = type === 'intense' ? 4 : 2;
+    return Array.from({ length: count }).map((_, i) => ({
+      id: `shape-${i}`,
+      shape: i % 3 === 0 ? 'circle' : i % 3 === 1 ? 'triangle' : 'square',
+      size: randomPosition(30, 60),
+      top: randomPosition(10, 90),
+      left: randomPosition(5, 95),
+      rotation: randomPosition(0, 360),
+      delay: i * 0.3,
+      duration: randomPosition(25, 40),
     }));
   }, [type]);
 
@@ -69,12 +105,17 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
             top: `${blob.top}%`,
             left: `${blob.left}%`,
           }}
-          initial={{ scale: 0.8, opacity: 0.05 }}
+          initial={{ 
+            scale: 0.8, 
+            opacity: 0.05,
+            rotate: blob.rotate
+          }}
           animate={{ 
             scale: [0.8, 1.2, 0.8],
             opacity: [0.05, 0.15, 0.05],
             x: [0, 30, 0],
             y: [0, -30, 0],
+            rotate: [blob.rotate, blob.rotate + 45, blob.rotate]
           }}
           transition={{
             duration: blob.duration,
@@ -85,21 +126,23 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
         />
       ))}
       
-      {/* Floating particles for intense mode */}
+      {/* Floating particles */}
       {particles.map((particle) => (
         <motion.div
           key={particle.id}
-          className="absolute rounded-full bg-white dark:bg-indigo-400"
+          className="absolute rounded-full"
           style={{
             width: particle.size,
             height: particle.size,
             top: `${particle.top}%`,
             left: `${particle.left}%`,
+            background: `linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2))`,
             opacity: 0.3,
           }}
           animate={{ 
             y: [0, -20, 0],
             opacity: [0.1, 0.3, 0.1],
+            scale: [0.8, 1.2, 0.8]
           }}
           transition={{
             duration: particle.duration,
@@ -110,6 +153,68 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
         />
       ))}
       
+      {/* Decorative shapes */}
+      {shapes.map((shape) => {
+        // Create shape based on type
+        const ShapeComponent = () => {
+          switch (shape.shape) {
+            case 'circle':
+              return (
+                <div 
+                  className="rounded-full border-2 border-white/10 dark:border-white/5"
+                  style={{ width: shape.size, height: shape.size }}
+                />
+              );
+            case 'triangle':
+              return (
+                <div 
+                  className="border-2 border-white/10 dark:border-white/5"
+                  style={{ 
+                    width: 0, 
+                    height: 0, 
+                    borderLeft: `${shape.size/2}px solid transparent`,
+                    borderRight: `${shape.size/2}px solid transparent`,
+                    borderBottom: `${shape.size}px solid rgba(255,255,255,0.05)`
+                  }}
+                />
+              );
+            case 'square':
+            default:
+              return (
+                <div 
+                  className="border-2 border-white/10 dark:border-white/5"
+                  style={{ width: shape.size, height: shape.size }}
+                />
+              );
+          }
+        };
+        
+        return (
+          <motion.div
+            key={shape.id}
+            className="absolute opacity-30"
+            style={{
+              top: `${shape.top}%`,
+              left: `${shape.left}%`,
+              transform: `rotate(${shape.rotation}deg)`,
+            }}
+            animate={{ 
+              rotate: [shape.rotation, shape.rotation + 180, shape.rotation],
+              scale: [1, 1.1, 1],
+              opacity: [0.1, 0.2, 0.1]
+            }}
+            transition={{
+              duration: shape.duration,
+              repeat: Infinity,
+              delay: shape.delay,
+              ease: "easeInOut"
+            }}
+          >
+            <ShapeComponent />
+          </motion.div>
+        );
+      })}
+      
       {/* Grid overlay for texture */}
       <div 
         className="absolute inset-0 opacity-5"
@@ -118,6 +223,14 @@ const VisualElements = ({ type = 'default', color = 'gradient' }: VisualElements
           backgroundSize: '30px 30px',
         }}
       />
+      
+      {/* Light beams for intense mode */}
+      {type === 'intense' && (
+        <>
+          <div className="absolute top-0 left-1/4 w-[200px] h-[60vh] bg-gradient-to-b from-primary/5 to-transparent opacity-30 blur-3xl transform rotate-15"></div>
+          <div className="absolute bottom-0 right-1/4 w-[200px] h-[60vh] bg-gradient-to-t from-secondary/5 to-transparent opacity-30 blur-3xl transform -rotate-15"></div>
+        </>
+      )}
     </div>
   );
 };
