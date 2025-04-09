@@ -81,19 +81,36 @@ const convertApiNewsToNewsItem = (item: ApiNewsItem): NewsItem => {
   };
 };
 
+// Check if the news cache is outdated (hourly refresh)
+const isCacheOutdated = (): boolean => {
+  try {
+    const lastCached = localStorage.getItem('news_cached_at');
+    if (!lastCached) return true;
+    
+    const cachedTime = new Date(lastCached).getTime();
+    const currentTime = new Date().getTime();
+    const hourInMillis = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    return (currentTime - cachedTime) > hourInMillis;
+  } catch (error) {
+    console.error('Error checking cache timestamp:', error);
+    return true;
+  }
+};
+
 export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
   try {
-    // Try to get cached news first (if they're from today)
+    // Try to get cached news first
     const cachedNews = getCachedNews(examType);
-    const isCacheValid = isCacheFromToday();
     
-    // Return cached news if they're from today and we have them
-    if (cachedNews.length > 0 && isCacheValid) {
-      console.log('Using cached news from today');
+    // Return cached news if they're from within the last hour
+    if (cachedNews.length > 0 && !isCacheOutdated()) {
+      console.log('Using cached news from within the last hour');
       return cachedNews;
     }
     
-    // Cache expired or empty, fetch fresh news
+    // Cache outdated or empty, fetch fresh news
+    console.log('Fetching fresh news');
     const fetchPromises = NEWS_API_SOURCES.map(endpoint => 
       fetch(endpoint)
         .then(res => {
@@ -126,7 +143,7 @@ export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
     // Convert all news items to our format
     const newsItems = allNews.map(convertApiNewsToNewsItem);
     
-    // Cache the new results with today's date
+    // Cache the new results with current timestamp
     cacheNews(newsItems);
     
     // If examType is provided, filter news relevant to that exam
@@ -141,21 +158,6 @@ export const fetchNews = async (examType?: ExamType): Promise<NewsItem[]> => {
     console.error('Error fetching news:', error);
     // Return cached news as fallback, even if expired
     return getCachedNews(examType);
-  }
-};
-
-// Check if the news cache is from today
-const isCacheFromToday = (): boolean => {
-  try {
-    const lastCached = localStorage.getItem('news_cached_at');
-    if (!lastCached) return false;
-    
-    const cachedDate = new Date(lastCached).toDateString();
-    const today = new Date().toDateString();
-    return cachedDate === today;
-  } catch (error) {
-    console.error('Error checking cache date:', error);
-    return false;
   }
 };
 
@@ -183,7 +185,13 @@ export const cacheNews = (news: NewsItem[]) => {
   try {
     localStorage.setItem('cached_news', JSON.stringify(news));
     localStorage.setItem('news_cached_at', new Date().toISOString());
+    console.log('News cached at:', new Date().toISOString());
   } catch (error) {
     console.error('Error caching news:', error);
   }
+};
+
+// Function to check if news should be refreshed (useful for components to call)
+export const shouldRefreshNews = (): boolean => {
+  return isCacheOutdated();
 };

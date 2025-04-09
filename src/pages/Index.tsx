@@ -17,6 +17,8 @@ import ChatMode from '@/components/ChatMode';
 import ChatRoom from '@/components/ChatRoom';
 import CurrentAffairs from '@/components/CurrentAffairs';
 import LanguageSelector from '@/components/LanguageSelector';
+import VisualElements from '@/components/VisualElements';
+import { shouldRefreshNews } from '@/services/newsService';
 import { ArrowRight, GitBranch, User, Mail, CheckCircle, Crown, HelpCircle, MessageSquare, BookOpen, Users, Newspaper, Languages } from 'lucide-react';
 import { ExamType, Language } from '@/types';
 
@@ -66,56 +68,39 @@ const Index = () => {
       description: `You've joined as a ${examType} aspirant.`,
     });
   };
-
-  // Generate a random name for the user
-  const generateRandomUser = () => {
-    const randomNames = [
-      "Arjun Sharma", "Priya Patel", "Rahul Singh", "Neha Gupta", 
-      "Vikram Mehta", "Ananya Desai", "Raj Kapoor", "Divya Reddy"
-    ];
-    
-    const randomDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"];
-    
-    const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
-    const emailPrefix = randomName.toLowerCase().replace(/\s/g, ".");
-    const domain = randomDomains[Math.floor(Math.random() * randomDomains.length)];
-    
-    setName(randomName);
-    setEmail(`${emailPrefix}@${domain}`);
-    validateName(randomName);
-    validateEmail(`${emailPrefix}@${domain}`);
-  };
   
-  // Verify we're getting fresh news daily
+  // Check for news updates
   useEffect(() => {
-    // Check if the news cache is from today
-    const lastCached = localStorage.getItem('news_cached_at');
-    if (!lastCached) return;
-    
-    const cachedDate = new Date(lastCached).toDateString();
-    const today = new Date().toDateString();
-    
-    if (cachedDate !== today && activeTab === 'news') {
+    if (shouldRefreshNews() && activeTab === 'news') {
       toast({
         title: "Updating news",
-        description: "Fetching today's current affairs...",
+        description: "Fetching the latest current affairs...",
       });
     }
   }, [activeTab, toast]);
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/40">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 relative overflow-hidden">
+      {/* Add visual elements */}
+      <VisualElements type={user ? 'default' : 'minimal'} />
+      
       {!user ? (
-        <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-          <AnimatedLogo />
+        <div className="container mx-auto py-8 px-4 flex flex-col items-center relative z-10">
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <AnimatedLogo />
+          </motion.div>
           
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             className="max-w-md w-full mx-auto mt-8"
           >
-            <Card className="overflow-hidden border-0 shadow-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm relative">
+            <Card className="overflow-hidden border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md relative">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
               <CardHeader className="pb-3">
                 <CardTitle className="text-xl text-indigo-700 dark:text-indigo-300">Join the Platform</CardTitle>
@@ -221,14 +206,6 @@ const Index = () => {
                   <span>Get Started</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
-                
-                <Button 
-                  onClick={generateRandomUser}
-                  variant="outline"
-                  className="w-full border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-                >
-                  Fill with Sample Data
-                </Button>
               </CardFooter>
             </Card>
             
@@ -254,33 +231,56 @@ const Index = () => {
           </motion.div>
         </div>
       ) : (
-        <div className="container mx-auto py-6 px-4">
+        <div className="container mx-auto py-6 px-4 relative z-10">
           <div className="flex justify-between items-center mb-6">
-            <AnimatedLogo />
-            <LanguageSelector />
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <AnimatedLogo />
+            </motion.div>
+            
+            <motion.div
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <LanguageSelector />
+            </motion.div>
           </div>
           
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
+            <motion.div 
+              className="md:col-span-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
               <ProfileCard />
-            </div>
+            </motion.div>
             
-            <div className="md:col-span-2 space-y-6">
+            <motion.div 
+              className="md:col-span-2 space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'questions' | 'chat' | 'room' | 'news')} className="w-full">
-                <TabsList className="grid grid-cols-4 mb-4">
-                  <TabsTrigger value="questions" className="flex items-center gap-2">
+                <TabsList className="grid grid-cols-4 mb-4 bg-white/20 dark:bg-slate-900/20 backdrop-blur-sm border border-white/10 dark:border-slate-700/30">
+                  <TabsTrigger value="questions" className="flex items-center gap-2 data-[state=active]:bg-white/80 dark:data-[state=active]:bg-slate-800/80 backdrop-blur-sm">
                     <BookOpen className="h-4 w-4" />
                     Practice Questions
                   </TabsTrigger>
-                  <TabsTrigger value="chat" className="flex items-center gap-2">
+                  <TabsTrigger value="chat" className="flex items-center gap-2 data-[state=active]:bg-white/80 dark:data-[state=active]:bg-slate-800/80 backdrop-blur-sm">
                     <MessageSquare className="h-4 w-4" />
                     AI Assistant
                   </TabsTrigger>
-                  <TabsTrigger value="room" className="flex items-center gap-2">
+                  <TabsTrigger value="room" className="flex items-center gap-2 data-[state=active]:bg-white/80 dark:data-[state=active]:bg-slate-800/80 backdrop-blur-sm">
                     <Users className="h-4 w-4" />
                     Exam Chat
                   </TabsTrigger>
-                  <TabsTrigger value="news" className="flex items-center gap-2">
+                  <TabsTrigger value="news" className="flex items-center gap-2 data-[state=active]:bg-white/80 dark:data-[state=active]:bg-slate-800/80 backdrop-blur-sm">
                     <Newspaper className="h-4 w-4" />
                     Current Affairs
                   </TabsTrigger>
@@ -306,7 +306,7 @@ const Index = () => {
                   <CurrentAffairs />
                 </TabsContent>
               </Tabs>
-            </div>
+            </motion.div>
           </div>
         </div>
       )}

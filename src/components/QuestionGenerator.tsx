@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,12 @@ const QuestionGenerator = () => {
   const { customQuestions } = useQuestionStore();
   
   const [difficulty, setDifficulty] = useState<QuestionDifficulty>('medium');
+  const [localLanguage, setLocalLanguage] = useState<Language>(selectedLanguage);
+  
+  // Sync local language with global state
+  useEffect(() => {
+    setLocalLanguage(selectedLanguage);
+  }, [selectedLanguage]);
   
   // Function to check if enough time has passed since last question generation
   const canGenerateNewQuestions = () => {
@@ -86,20 +92,23 @@ const QuestionGenerator = () => {
       trackUserActivity(user.id, 'generate_questions', {
         examType: user.examType,
         difficulty,
-        language: selectedLanguage
+        language: localLanguage
       });
       
       // Generate 5 questions for premium, or limited questions for free users
       const count = user.isPremium ? 5 : Math.min(user.monthlyQuestionsRemaining, 5);
       
-      console.log('Generating questions with language:', selectedLanguage);
+      console.log('Generating questions with language:', localLanguage);
+      
+      // Apply global language selection
+      setSelectedLanguage(localLanguage);
       
       const generatedQuestions = await generateQuestions({
         examType: user.examType,
         difficulty: difficulty,
         count,
         askedQuestionIds, // Pass the IDs of questions that have already been asked
-        language: selectedLanguage
+        language: localLanguage
       });
       
       if (generatedQuestions.length === 0) {
@@ -157,8 +166,13 @@ const QuestionGenerator = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      className="relative"
     >
-      <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 relative">
+      {/* Decorative gradient blobs */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl -z-10"></div>
+      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl -z-10"></div>
+      
+      <Card className="overflow-hidden border-0 shadow-xl bg-white/90 backdrop-blur-md dark:bg-slate-900/90 relative z-10">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
         <CardHeader className="pb-3">
           <CardTitle className="text-xl flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
@@ -170,8 +184,8 @@ const QuestionGenerator = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-6">
+            <div className="space-y-3">
               <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
                 <Flame className="w-4 h-4 text-indigo-500" />
                 <span>Difficulty Level</span>
@@ -189,7 +203,7 @@ const QuestionGenerator = () => {
                   />
                   <Label 
                     htmlFor="easy" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer transition-all duration-200"
                   >
                     <ShieldCheck className="mb-1 h-5 w-5 text-emerald-500" />
                     <span className="text-sm font-medium">Easy</span>
@@ -204,7 +218,7 @@ const QuestionGenerator = () => {
                   />
                   <Label 
                     htmlFor="medium" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer transition-all duration-200"
                   >
                     <Flame className="mb-1 h-5 w-5 text-amber-500" />
                     <span className="text-sm font-medium">Medium</span>
@@ -219,7 +233,7 @@ const QuestionGenerator = () => {
                   />
                   <Label 
                     htmlFor="hard" 
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:bg-indigo-50 dark:peer-data-[state=checked]:bg-indigo-950/40 [&:has([data-state=checked])]:border-primary cursor-pointer transition-all duration-200"
                   >
                     <ShieldAlert className="mb-1 h-5 w-5 text-rose-500" />
                     <span className="text-sm font-medium">Hard</span>
@@ -228,24 +242,24 @@ const QuestionGenerator = () => {
               </RadioGroup>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-medium">
                 <Languages className="w-4 h-4 text-indigo-500" />
                 <span>Question Language</span>
               </Label>
               <Select 
-                value={selectedLanguage} 
-                onValueChange={(value) => setSelectedLanguage(value as Language)}
+                value={localLanguage} 
+                onValueChange={(value) => setLocalLanguage(value as Language)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full bg-white dark:bg-slate-800 border-2 transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700">
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="English">English</SelectItem>
-                  <SelectItem value="Hindi">Hindi</SelectItem>
-                  <SelectItem value="Tamil">Tamil</SelectItem>
-                  <SelectItem value="Telugu">Telugu</SelectItem>
-                  <SelectItem value="Malayalam">Malayalam</SelectItem>
+                <SelectContent className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-indigo-100 dark:border-indigo-900/40">
+                  <SelectItem value="English" className="cursor-pointer">English</SelectItem>
+                  <SelectItem value="Hindi" className="cursor-pointer">हिंदी</SelectItem>
+                  <SelectItem value="Tamil" className="cursor-pointer">தமிழ்</SelectItem>
+                  <SelectItem value="Telugu" className="cursor-pointer">తెలుగు</SelectItem>
+                  <SelectItem value="Malayalam" className="cursor-pointer">മലയാളം</SelectItem>
                 </SelectContent>
               </Select>
             </div>
