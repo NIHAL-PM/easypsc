@@ -81,7 +81,7 @@ const convertApiNewsToNewsItem = (item: ApiNewsItem): NewsItem => {
   };
 };
 
-// Check if the news cache is outdated (hourly refresh)
+// Check if the news cache is outdated (update every 3 minutes)
 const isCacheOutdated = (): boolean => {
   try {
     const lastCached = localStorage.getItem('news_cached_at');
@@ -89,9 +89,9 @@ const isCacheOutdated = (): boolean => {
     
     const cachedTime = new Date(lastCached).getTime();
     const currentTime = new Date().getTime();
-    const hourInMillis = 60 * 60 * 1000; // 1 hour in milliseconds
+    const threeMinutesInMillis = 3 * 60 * 1000; // 3 minutes in milliseconds
     
-    return (currentTime - cachedTime) > hourInMillis;
+    return (currentTime - cachedTime) > threeMinutesInMillis;
   } catch (error) {
     console.error('Error checking cache timestamp:', error);
     return true;

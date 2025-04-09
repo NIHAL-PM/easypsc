@@ -36,6 +36,7 @@ import { getGeminiApiKey } from '@/lib/env';
 import { getSystemStats } from '@/services/api';
 import { useQuestionStore } from '@/services/questionStore';
 import { Question, QuestionDifficulty } from '@/types';
+import { toQuestionDifficulty } from '@/utils/typeUtils';
 
 const AdminPanel = () => {
   const { toast } = useToast();

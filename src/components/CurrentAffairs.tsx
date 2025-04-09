@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '@/components/ui/use-toast';
 import { NewsItem, ExamType } from '@/types';
-import { fetchNews, getCachedNews, cacheNews } from '@/services/newsService';
+import { fetchNews, getCachedNews, cacheNews, shouldRefreshNews } from '@/services/newsService';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
 import { ExternalLink, RefreshCw, Newspaper, Calendar, AlertTriangle } from 'lucide-react';
@@ -38,6 +38,16 @@ const CurrentAffairs = () => {
   // Load news on component mount
   useEffect(() => {
     loadNews();
+    
+    // Set up auto-refresh every 3 minutes
+    const refreshInterval = setInterval(() => {
+      if (shouldRefreshNews()) {
+        console.log('Auto-refreshing news...');
+        loadNews();
+      }
+    }, 3 * 60 * 1000); // 3 minutes
+    
+    return () => clearInterval(refreshInterval);
   }, [user]);
   
   // Filter news when category or page changes
@@ -48,28 +58,30 @@ const CurrentAffairs = () => {
   const loadNews = async () => {
     setIsLoading(true);
     
-    // Try to use cached news first
-    const cachedNews = getCachedNews(user?.examType);
-    if (cachedNews.length > 0) {
-      setNews(cachedNews);
-      setIsLoading(false);
-      return;
-    }
-    
     try {
+      // Always fetch fresh news for better user experience
       const fetchedNews = await fetchNews(user?.examType);
       setNews(fetchedNews);
       
       // Cache the fetched news
       cacheNews(fetchedNews);
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading news:', error);
+      
+      // Try to use cached news as fallback
+      const cachedNews = getCachedNews(user?.examType);
+      if (cachedNews.length > 0) {
+        setNews(cachedNews);
+      }
+      
       toast({
-        title: 'Failed to load news',
-        description: 'Could not load the latest current affairs. Please try again later.',
+        title: 'Failed to fetch latest news',
+        description: 'Using cached news instead. Please check your connection.',
         variant: 'destructive',
       });
-    } finally {
+      
       setIsLoading(false);
     }
   };
@@ -106,7 +118,7 @@ const CurrentAffairs = () => {
     news.filter(item => item.category === selectedCategory).length) / itemsPerPage);
   
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="glassmorphism border-0 shadow-lg">
       <CardHeader className="border-b pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -118,7 +130,7 @@ const CurrentAffairs = () => {
             size="sm" 
             onClick={handleRefresh} 
             disabled={isLoading}
-            className="h-8 gap-1"
+            className="h-8 gap-1 btn-fancy"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -126,6 +138,7 @@ const CurrentAffairs = () => {
         </div>
         <CardDescription>
           Latest news and current affairs relevant for {user?.examType || 'competitive'} exam preparation
+          <div className="mt-1 text-xs">Auto-refreshes every 3 minutes</div>
         </CardDescription>
       </CardHeader>
       

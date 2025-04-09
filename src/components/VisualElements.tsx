@@ -34,13 +34,13 @@ const VisualElements = ({
   
   // Compute blob positions and animations only once
   const blobs = useMemo(() => {
-    const countMap = { 
+    const countMap: Record<string, number> = { 
       'minimal': 2, 
       'default': 4, 
       'intense': 6 
     };
     
-    const densityMultiplier = { 'low': 0.7, 'medium': 1, 'high': 1.5 };
+    const densityMultiplier: Record<string, number> = { 'low': 0.7, 'medium': 1, 'high': 1.5 };
     const count = Math.floor(countMap[type] * densityMultiplier[density]);
     
     return Array.from({ length: count }).map((_, i) => ({
@@ -57,8 +57,8 @@ const VisualElements = ({
   const particles = useMemo(() => {
     if (type === 'minimal') return [];
     
-    const countMap = { 'default': 10, 'intense': 20 };
-    const densityMultiplier = { 'low': 0.5, 'medium': 1, 'high': 1.8 };
+    const countMap: Record<string, number> = { 'default': 10, 'intense': 20 };
+    const densityMultiplier: Record<string, number> = { 'low': 0.5, 'medium': 1, 'high': 1.8 };
     const count = Math.floor(countMap[type === 'minimal' ? 'default' : type] * densityMultiplier[density]);
     
     return Array.from({ length: count }).map((_, i) => ({
