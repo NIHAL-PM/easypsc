@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
@@ -32,6 +31,9 @@ const VisualElements = ({
     return Math.floor(Math.random() * (max - min + 1) + min);
   };
   
+  // Define density multipliers
+  const densityMultiplier: Record<string, number> = { 'low': 0.7, 'medium': 1, 'high': 1.5 };
+  
   // Compute blob positions and animations only once
   const blobs = useMemo(() => {
     const countMap: Record<string, number> = { 
@@ -40,7 +42,6 @@ const VisualElements = ({
       'intense': 6 
     };
     
-    const densityMultiplier: Record<string, number> = { 'low': 0.7, 'medium': 1, 'high': 1.5 };
     const count = Math.floor(countMap[type] * densityMultiplier[density]);
     
     return Array.from({ length: count }).map((_, i) => ({
@@ -58,8 +59,8 @@ const VisualElements = ({
     if (type === 'minimal') return [];
     
     const countMap: Record<string, number> = { 'default': 10, 'intense': 20 };
-    // Fix the type comparison here - don't compare type values directly, use a conditional
-    const count = Math.floor(countMap[type === 'minimal' ? 'default' : type] * densityMultiplier[density]);
+    // Fixed comparison - use conditional to properly check the type
+    const count = type === 'minimal' ? 0 : Math.floor(countMap[type] * densityMultiplier[density]);
     
     return Array.from({ length: count }).map((_, i) => ({
       id: `particle-${i}`,
