@@ -17,7 +17,10 @@ import {
   PencilIcon,
   TrashIcon,
   PlusIcon,
-  SearchIcon
+  SearchIcon,
+  UploadIcon,
+  FileTextIcon,
+  LanguagesIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,7 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getGeminiApiKey } from '@/lib/env';
 import { getSystemStats } from '@/services/api';
 import { useQuestionStore } from '@/services/questionStore';
-import { Question, QuestionDifficulty } from '@/types';
+import { Question, QuestionDifficulty, ExamType, Language } from '@/types';
 import { toQuestionDifficulty } from '@/utils/typeUtils';
 
 const AdminPanel = () => {
@@ -58,6 +61,8 @@ const AdminPanel = () => {
   
   const { customQuestions, updateQuestion, deleteQuestion, addCustomQuestion } = useQuestionStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExamType, setSelectedExamType] = useState<ExamType>('UPSC');
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('English');
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
     text: '',
@@ -65,10 +70,17 @@ const AdminPanel = () => {
     correctOption: 0,
     explanation: '',
     category: '',
-    difficulty: 'medium'
+    difficulty: 'medium',
+    examType: 'UPSC',
+    language: 'English'
   });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
+  const [bulkQuestions, setBulkQuestions] = useState('');
+  
+  const examTypes: ExamType[] = ['UPSC', 'PSC', 'SSC', 'Banking'];
+  const languages: Language[] = ['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam'];
   
   useEffect(() => {
     const storedApiKey = localStorage.getItem('GEMINI_API_KEY');
@@ -86,10 +98,14 @@ const AdminPanel = () => {
     }
   }, [isLoggedIn]);
   
-  const filteredQuestions = customQuestions.filter(question => 
-    question.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    question.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuestions = customQuestions.filter(question => {
+    const matchesSearch = question.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         question.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesExamType = question.examType === selectedExamType;
+    const matchesLanguage = question.language === selectedLanguage;
+    
+    return matchesSearch && matchesExamType && matchesLanguage;
+  });
   
   const handleLogin = () => {
     setIsLoading(true);
@@ -182,7 +198,9 @@ const AdminPanel = () => {
       correctOption: newQuestion.correctOption || 0,
       explanation: newQuestion.explanation || '',
       category: newQuestion.category || 'General',
-      difficulty: toQuestionDifficulty(newQuestion.difficulty as string || 'medium')
+      difficulty: toQuestionDifficulty(newQuestion.difficulty as string || 'medium'),
+      examType: selectedExamType,
+      language: selectedLanguage
     });
     
     setNewQuestion({
@@ -191,15 +209,72 @@ const AdminPanel = () => {
       correctOption: 0,
       explanation: '',
       category: '',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      examType: selectedExamType,
+      language: selectedLanguage
     });
     
     setShowAddDialog(false);
     
     toast({
       title: 'Question added',
-      description: 'New question has been successfully added to the database',
+      description: `New ${selectedExamType} question in ${selectedLanguage} has been added`,
     });
+  };
+  
+  const handleBulkUpload = () => {
+    if (!bulkQuestions.trim()) {
+      toast({
+        title: 'No questions to upload',
+        description: 'Please paste questions in the required format',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    try {
+      const questions = bulkQuestions.split('\n\n').filter(q => q.trim());
+      let successCount = 0;
+      
+      questions.forEach((questionBlock, index) => {
+        const lines = questionBlock.trim().split('\n');
+        if (lines.length >= 6) {
+          const questionText = lines[0];
+          const options = [lines[1], lines[2], lines[3], lines[4]];
+          const correctOption = parseInt(lines[5]) - 1; // Assuming 1-based indexing
+          const explanation = lines[6] || 'No explanation provided';
+          const category = lines[7] || 'General';
+          
+          if (questionText && options.every(opt => opt) && correctOption >= 0 && correctOption < 4) {
+            addCustomQuestion({
+              text: questionText,
+              options,
+              correctOption,
+              explanation,
+              category,
+              difficulty: 'medium' as QuestionDifficulty,
+              examType: selectedExamType,
+              language: selectedLanguage
+            });
+            successCount++;
+          }
+        }
+      });
+      
+      setBulkQuestions('');
+      setShowBulkUploadDialog(false);
+      
+      toast({
+        title: 'Bulk upload successful',
+        description: `${successCount} questions uploaded for ${selectedExamType} in ${selectedLanguage}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: 'Please check the format and try again',
+        variant: 'destructive'
+      });
+    }
   };
   
   const handleLogout = () => {
@@ -332,8 +407,12 @@ const AdminPanel = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="apiSettings" className="w-full">
+        <Tabs defaultValue="questionManagement" className="w-full">
           <TabsList className="grid grid-cols-4 mb-6">
+            <TabsTrigger value="questionManagement" className="flex items-center gap-2">
+              <DatabaseIcon className="h-4 w-4" />
+              Question Management
+            </TabsTrigger>
             <TabsTrigger value="apiSettings" className="flex items-center gap-2">
               <KeyIcon className="h-4 w-4" />
               API Settings
@@ -346,11 +425,147 @@ const AdminPanel = () => {
               <BarChart2Icon className="h-4 w-4" />
               System Statistics
             </TabsTrigger>
-            <TabsTrigger value="questionManagement" className="flex items-center gap-2">
-              <DatabaseIcon className="h-4 w-4" />
-              Question Database
-            </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="questionManagement" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <LanguagesIcon className="h-5 w-5" />
+                    Question Database Management
+                  </CardTitle>
+                  <CardDescription>
+                    Manage questions by exam type and language
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => setShowBulkUploadDialog(true)} variant="outline" className="flex items-center gap-2">
+                    <UploadIcon className="h-4 w-4" />
+                    Bulk Upload
+                  </Button>
+                  <Button onClick={() => setShowAddDialog(true)} className="flex items-center gap-2">
+                    <PlusIcon className="h-4 w-4" />
+                    Add Question
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label>Exam Type</Label>
+                    <Select value={selectedExamType} onValueChange={(value: ExamType) => setSelectedExamType(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select exam type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {examTypes.map(examType => (
+                          <SelectItem key={examType} value={examType}>{examType}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Language</Label>
+                    <Select value={selectedLanguage} onValueChange={(value: Language) => setSelectedLanguage(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {languages.map(language => (
+                          <SelectItem key={language} value={language}>{language}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Search Questions</Label>
+                    <div className="relative">
+                      <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Search questions..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[400px]">Question</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Difficulty</TableHead>
+                        <TableHead>Exam Type</TableHead>
+                        <TableHead>Language</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredQuestions.length > 0 ? (
+                        filteredQuestions.map((question) => (
+                          <TableRow key={question.id}>
+                            <TableCell className="font-medium">
+                              {question.text.length > 80 
+                                ? `${question.text.substring(0, 80)}...` 
+                                : question.text}
+                            </TableCell>
+                            <TableCell>{question.category}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                question.difficulty === 'easy' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                  : question.difficulty === 'medium'
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              }`}>
+                                {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell>{question.examType}</TableCell>
+                            <TableCell>{question.language}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleEditQuestion(question)}
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteQuestion(question.id)}
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center">
+                            No questions found for {selectedExamType} in {selectedLanguage}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredQuestions.length} questions for {selectedExamType} in {selectedLanguage}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="apiSettings" className="space-y-4">
             <Card>
@@ -543,111 +758,55 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
-          <TabsContent value="questionManagement" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Question Database</CardTitle>
-                  <CardDescription>
-                    View, edit, and manage all questions
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowAddDialog(true)} className="flex items-center gap-2">
-                  <PlusIcon className="h-4 w-4" />
-                  Add Question
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2 mb-4">
-                  <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search questions..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select defaultValue="all">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Difficulties</SelectItem>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="rounded-lg border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[400px]">Question</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Difficulty</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredQuestions.length > 0 ? (
-                        filteredQuestions.map((question) => (
-                          <TableRow key={question.id}>
-                            <TableCell className="font-medium">
-                              {question.text.length > 80 
-                                ? `${question.text.substring(0, 80)}...` 
-                                : question.text}
-                            </TableCell>
-                            <TableCell>{question.category}</TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                question.difficulty === 'easy' 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                  : question.difficulty === 'medium'
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              }`}>
-                                {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => handleEditQuestion(question)}
-                                >
-                                  <PencilIcon className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm" 
-                                  onClick={() => handleDeleteQuestion(question.id)}
-                                >
-                                  <TrashIcon className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center">
-                            No questions found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+      
+      <Dialog open={showBulkUploadDialog} onOpenChange={setShowBulkUploadDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UploadIcon className="h-5 w-5" />
+              Bulk Upload Questions
+            </DialogTitle>
+            <DialogDescription>
+              Upload multiple questions for {selectedExamType} in {selectedLanguage}. 
+              Format: Question\nOption A\nOption B\nOption C\nOption D\nCorrect Option (1-4)\nExplanation\nCategory
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulkQuestions">Questions (separate each question with a blank line)</Label>
+              <Textarea 
+                id="bulkQuestions" 
+                placeholder="What is the capital of India?&#10;New Delhi&#10;Mumbai&#10;Kolkata&#10;Chennai&#10;1&#10;New Delhi is the capital of India&#10;Geography&#10;&#10;Next question here..."
+                value={bulkQuestions}
+                onChange={(e) => setBulkQuestions(e.target.value)}
+                className="min-h-[300px] font-mono text-sm"
+              />
+            </div>
+            
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Upload Details:</h4>
+              <p className="text-sm text-muted-foreground">
+                • Exam Type: <strong>{selectedExamType}</strong><br/>
+                • Language: <strong>{selectedLanguage}</strong><br/>
+                • Expected questions: {bulkQuestions.split('\n\n').filter(q => q.trim()).length}
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkUploadDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkUpload} className="flex items-center gap-2">
+              <UploadIcon className="h-4 w-4" />
+              Upload Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="sm:max-w-lg">

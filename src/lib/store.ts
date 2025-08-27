@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +22,7 @@ type AppStoreWithActions = AppState & {
   sendChatMessage: (content: string) => void;
   getChatMessagesByExamType: (examType: ExamType) => ChatMessage[];
   setSelectedLanguage: (language: Language) => void;
+  clearChatHistory: (examType?: ExamType) => void;
 };
 
 export const useAppStore = create<AppStoreWithActions>()(
@@ -49,13 +51,14 @@ export const useAppStore = create<AppStoreWithActions>()(
           // Update last active timestamp and set selected language from user preferences
           const updatedUser = {
             ...existingUser,
-            lastActive: new Date()
+            lastActive: new Date(),
+            examType // Update exam type if different
           };
           
           set({ 
             user: updatedUser,
             allUsers: allUsers.map(u => u.id === updatedUser.id ? updatedUser : u),
-            selectedLanguage: updatedUser.preferredLanguage || 'English' // Set language from user preferences
+            selectedLanguage: updatedUser.preferredLanguage || 'English'
           });
           return;
         }
@@ -67,19 +70,19 @@ export const useAppStore = create<AppStoreWithActions>()(
           email,
           examType,
           isPremium: false,
-          monthlyQuestionsRemaining: 10,  // Free tier limit
+          monthlyQuestionsRemaining: 10,
           questionsAnswered: 0,
           questionsCorrect: 0,
           currentStreak: 0,
           lastActive: new Date(),
           lastQuestionTime: null,
-          preferredLanguage: 'English' // Set default language
+          preferredLanguage: 'English'
         };
         
         set(state => ({ 
           user: newUser,
           allUsers: [...state.allUsers, newUser],
-          selectedLanguage: newUser.preferredLanguage || 'English' // Set language from user preferences
+          selectedLanguage: newUser.preferredLanguage || 'English'
         }));
       },
       
@@ -88,14 +91,12 @@ export const useAppStore = create<AppStoreWithActions>()(
       logout: () => set({ user: null }),
       
       upgradeUserToPremium: (userId) => set(state => {
-        // Update the user in allUsers
         const updatedUsers = state.allUsers.map(user => 
           user.id === userId 
             ? { ...user, isPremium: true, monthlyQuestionsRemaining: 999 } 
             : user
         );
         
-        // Update current user if it's the same user
         const currentUser = state.user && state.user.id === userId
           ? { ...state.user, isPremium: true, monthlyQuestionsRemaining: 999 }
           : state.user;
@@ -115,7 +116,6 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         set(state => ({ 
           questions,
-          // Add new question IDs to the list of asked questions
           askedQuestionIds: [...state.askedQuestionIds, ...newQuestionIds]
         }));
       },
@@ -137,7 +137,6 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         const isCorrect = selectedOption === currentQuestion.correctOption;
         
-        // Update user stats
         const updatedUser = {
           ...user,
           questionsAnswered: user.questionsAnswered + 1,
@@ -148,7 +147,6 @@ export const useAppStore = create<AppStoreWithActions>()(
           lastActive: new Date()
         };
         
-        // Update allUsers as well
         const updatedAllUsers = get().allUsers.map(u => 
           u.id === user.id ? updatedUser : u
         );
@@ -172,10 +170,7 @@ export const useAppStore = create<AppStoreWithActions>()(
           return;
         }
         
-        // Find index of current question
         const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
-        
-        // Get next question or wrap around to the first one
         const nextIndex = (currentIndex + 1) % questions.length;
         const nextQuestion = questions[nextIndex];
         
@@ -208,8 +203,8 @@ export const useAppStore = create<AppStoreWithActions>()(
           accuracyPercentage: user.questionsAnswered > 0 
             ? (user.questionsCorrect / user.questionsAnswered) * 100 
             : 0,
-          weakCategories: [], // To be implemented with category tracking
-          strongCategories: [], // To be implemented with category tracking
+          weakCategories: [],
+          strongCategories: [],
           streakDays: user.currentStreak
         };
       },
@@ -224,7 +219,6 @@ export const useAppStore = create<AppStoreWithActions>()(
           examType
         };
         
-        // Update allUsers as well
         const updatedAllUsers = allUsers.map(u => 
           u.id === user.id ? updatedUser : u
         );
@@ -245,7 +239,6 @@ export const useAppStore = create<AppStoreWithActions>()(
           lastQuestionTime: time
         };
         
-        // Update allUsers as well
         const updatedAllUsers = allUsers.map(u => 
           u.id === user.id ? updatedUser : u
         );
@@ -270,6 +263,8 @@ export const useAppStore = create<AppStoreWithActions>()(
           examType: user.examType
         };
 
+        console.log(`💬 Sending chat message for ${user.examType}:`, content);
+
         set({ 
           chatMessages: [...chatMessages, newMessage]
         });
@@ -277,7 +272,24 @@ export const useAppStore = create<AppStoreWithActions>()(
 
       getChatMessagesByExamType: (examType) => {
         const { chatMessages } = get();
-        return chatMessages.filter(message => message.examType === examType);
+        const filtered = chatMessages.filter(message => message.examType === examType);
+        console.log(`📨 Retrieved ${filtered.length} messages for ${examType}`);
+        return filtered;
+      },
+
+      clearChatHistory: (examType) => {
+        const { chatMessages } = get();
+        
+        if (examType) {
+          // Clear messages for specific exam type
+          const filteredMessages = chatMessages.filter(message => message.examType !== examType);
+          set({ chatMessages: filteredMessages });
+          console.log(`🗑️ Cleared chat history for ${examType}`);
+        } else {
+          // Clear all messages
+          set({ chatMessages: [] });
+          console.log('🗑️ Cleared all chat history');
+        }
       },
 
       setSelectedLanguage: (language: Language) => {
@@ -285,7 +297,6 @@ export const useAppStore = create<AppStoreWithActions>()(
         
         set({ selectedLanguage: language });
         
-        // Also update user preferences if logged in
         if (user) {
           const updatedUser = {
             ...user,

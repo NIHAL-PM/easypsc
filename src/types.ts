@@ -26,6 +26,8 @@ export interface Question {
   explanation: string;
   category: string;
   difficulty: QuestionDifficulty;
+  examType: ExamType;
+  language: Language;
 }
 
 export interface CurrentAffairsItem {
