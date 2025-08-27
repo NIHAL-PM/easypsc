@@ -1,7 +1,6 @@
-
-export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking';
+export type ExamType = 'UPSC' | 'PSC' | 'SSC' | 'Banking' | 'UGC NET';
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
-export type Language = 'English' | 'Hindi' | 'Tamil' | 'Telugu' | 'Malayalam';
+export type Language = 'English' | 'Hindi' | 'Tamil' | 'Telugu' | 'Malayalam' | 'Kannada';
 
 export interface User {
   id: string;

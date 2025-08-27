@@ -79,8 +79,8 @@ const AdminPanel = () => {
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
   const [bulkQuestions, setBulkQuestions] = useState('');
   
-  const examTypes: ExamType[] = ['UPSC', 'PSC', 'SSC', 'Banking'];
-  const languages: Language[] = ['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam'];
+  const examTypes: ExamType[] = ['UPSC', 'PSC', 'SSC', 'Banking', 'UGC NET'];
+  const languages: Language[] = ['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'];
   
   useEffect(() => {
     const storedApiKey = localStorage.getItem('GEMINI_API_KEY');
@@ -198,7 +198,7 @@ const AdminPanel = () => {
       correctOption: newQuestion.correctOption || 0,
       explanation: newQuestion.explanation || '',
       category: newQuestion.category || 'General',
-      difficulty: toQuestionDifficulty(newQuestion.difficulty as string || 'medium'),
+      difficulty: (newQuestion.difficulty as QuestionDifficulty) || 'medium',
       examType: selectedExamType,
       language: selectedLanguage
     });
@@ -272,6 +272,84 @@ const AdminPanel = () => {
       toast({
         title: 'Upload failed',
         description: 'Please check the format and try again',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (!['csv', 'json'].includes(fileExtension || '')) {
+      toast({
+        title: 'Invalid file format',
+        description: 'Please upload a CSV or JSON file',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    try {
+      const fileContent = await file.text();
+      let questions: any[] = [];
+      
+      if (fileExtension === 'json') {
+        questions = JSON.parse(fileContent);
+      } else if (fileExtension === 'csv') {
+        // Basic CSV parsing - assumes header row
+        const lines = fileContent.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (values.length >= 8) {
+            questions.push({
+              text: values[0],
+              option1: values[1],
+              option2: values[2],
+              option3: values[3],
+              option4: values[4],
+              correctOption: parseInt(values[5]) - 1,
+              explanation: values[6],
+              category: values[7]
+            });
+          }
+        }
+      }
+      
+      let successCount = 0;
+      questions.forEach(q => {
+        if (q.text && q.option1 && q.option2 && q.option3 && q.option4) {
+          const options = [q.option1, q.option2, q.option3, q.option4];
+          addCustomQuestion({
+            text: q.text,
+            options,
+            correctOption: q.correctOption || 0,
+            explanation: q.explanation || 'No explanation provided',
+            category: q.category || 'General',
+            difficulty: 'medium' as QuestionDifficulty,
+            examType: selectedExamType,
+            language: selectedLanguage
+          });
+          successCount++;
+        }
+      });
+      
+      toast({
+        title: 'File upload successful',
+        description: `${successCount} questions uploaded for ${selectedExamType} in ${selectedLanguage}`,
+      });
+      
+      // Reset file input
+      event.target.value = '';
+      
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: 'Please check the file format and try again',
         variant: 'destructive'
       });
     }
@@ -436,7 +514,7 @@ const AdminPanel = () => {
                     Question Database Management
                   </CardTitle>
                   <CardDescription>
-                    Manage questions by exam type and language
+                    Manage questions by exam type and language. Upload CSV/JSON files.
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -444,6 +522,18 @@ const AdminPanel = () => {
                     <UploadIcon className="h-4 w-4" />
                     Bulk Upload
                   </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".csv,.json"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <FileTextIcon className="h-4 w-4" />
+                      Upload File
+                    </Button>
+                  </div>
                   <Button onClick={() => setShowAddDialog(true)} className="flex items-center gap-2">
                     <PlusIcon className="h-4 w-4" />
                     Add Question

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -65,6 +64,17 @@ export const useQuestionStore = create<QuestionStore>()(
       ],
       
       addCustomQuestion: (question) => {
+        const newQuestion: Question = {
+          ...question,
+          id: uuidv4(),
+        };
+        
+        set((state) => ({
+          customQuestions: [...state.customQuestions, newQuestion],
+        }));
+      },
+      
+      addQuestion: (question) => {
         const newQuestion: Question = {
           ...question,
           id: uuidv4(),

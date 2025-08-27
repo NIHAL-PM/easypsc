@@ -1,4 +1,3 @@
-
 import { Question, ExamType, QuestionDifficulty, Language } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,6 +11,7 @@ interface GenerateQuestionsOptions {
 
 // Hard-coded API key - in a real app, this would come from environment variables
 const GEMINI_API_KEY = "AIzaSyC_OCnmU3eQUn0IhDUyY6nyMdcI0hM8Vik";
+const GEMINI_MODEL = "gemini-2.0-flash-exp"; // Updated to 2.5 Flash
 
 /**
  * Generates AI-powered questions using the Gemini 1.5 Flash API
@@ -29,16 +29,19 @@ export const generateQuestions = async ({
       throw new Error('API key not configured');
     }
     
-    // Prepare the prompt for Gemini with specific instruction not to repeat questions
+    // Enhanced prompt for better question generation
     const prompt = `Generate ${count} multiple-choice questions for ${examType} exam preparation. 
     Difficulty level: ${difficulty}.
     Generate questions in ${language}.
+    
+    ${examType === 'UGC NET' ? 'Focus on topics relevant to UGC NET syllabus including research methodology, teaching aptitude, and subject-specific knowledge.' : ''}
     
     Critical requirements:
     1. Generate completely new and unique questions that have not been used before.
     2. Each question must have a different topic/concept to ensure variety.
     3. Ensure the questions are factually accurate and relevant to the ${examType} exam.
     4. All questions and options MUST be in ${language} language.
+    5. Make questions challenging but fair for ${difficulty} level.
     
     Format each question with:
     1. Question text
@@ -58,10 +61,10 @@ export const generateQuestions = async ({
       "difficulty": "${difficulty}"
     }`;
     
-    console.log(`Calling Gemini API with prompt for ${count} questions in ${language}`);
+    console.log(`Calling Gemini 2.0 Flash with prompt for ${count} questions in ${language}`);
     
-    // Call the Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Call the updated Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -150,8 +153,8 @@ export const generateChat = async (
       return null;
     }
     
-    // Call the Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+    // Call the updated Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +164,7 @@ export const generateChat = async (
           {
             parts: [
               {
-                text: `You are an expert exam preparation assistant for competitive exams like UPSC, PSC, SSC, and Banking exams. 
+                text: `You are an expert exam preparation assistant for competitive exams like UPSC, PSC, SSC, Banking, and UGC NET exams. 
                 Provide helpful, accurate, and concise answers to the user's questions. Focus on being educational and helpful.
                 
                 User message: ${userMessage}`
