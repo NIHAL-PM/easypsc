@@ -30,7 +30,7 @@ const PremiumUpgrade = () => {
     
     // Simulate payment processing
     setTimeout(() => {
-      upgradeUserToPremium(user.id);
+      upgradeUserToPremium();
       
       setIsProcessing(false);
       

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,8 +134,8 @@ const QuestionGenerator = () => {
       if (generatedQuestions.length > 0) {
         setCurrentQuestion(generatedQuestions[0]);
         
-        // Update the last question time
-        setLastQuestionTime(new Date().getTime());
+        // Update the last question time - call without arguments
+        setLastQuestionTime();
         
         toast({
           title: 'Questions generated',
