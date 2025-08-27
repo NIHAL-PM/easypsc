@@ -31,7 +31,8 @@ const LanguageSelector = ({
     "Hindi": "हिंदी",
     "Tamil": "தமிழ்",
     "Telugu": "తెలుగు",
-    "Malayalam": "മലയാളം"
+    "Malayalam": "മലയാളം",
+    "Kannada": "ಕನ್ನಡ"
   };
 
   const handleLanguageSelect = (language: Language) => {

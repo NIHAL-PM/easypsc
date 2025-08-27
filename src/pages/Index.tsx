@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -82,7 +81,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 relative overflow-hidden">
       {/* Add visual elements */}
-      <VisualElements type={user ? 'default' : 'minimal'} />
+      <VisualElements variant={user ? 'default' : 'minimal'} />
       
       {!user ? (
         <div className="container mx-auto py-8 px-4 flex flex-col items-center relative z-10">
@@ -171,6 +170,7 @@ const Index = () => {
                       <SelectItem value="PSC">PSC</SelectItem>
                       <SelectItem value="SSC">SSC</SelectItem>
                       <SelectItem value="Banking">Banking</SelectItem>
+                      <SelectItem value="UGC NET">UGC NET</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -194,6 +194,7 @@ const Index = () => {
                       <SelectItem value="Tamil">தமிழ்</SelectItem>
                       <SelectItem value="Telugu">తెలుగు</SelectItem>
                       <SelectItem value="Malayalam">മലയാളം</SelectItem>
+                      <SelectItem value="Kannada">ಕನ್ನಡ</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

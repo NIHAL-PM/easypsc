@@ -260,6 +260,7 @@ const QuestionGenerator = () => {
                   <SelectItem value="Tamil" className="cursor-pointer">தமிழ்</SelectItem>
                   <SelectItem value="Telugu" className="cursor-pointer">తెలుగు</SelectItem>
                   <SelectItem value="Malayalam" className="cursor-pointer">മലയാളം</SelectItem>
+                  <SelectItem value="Kannada" className="cursor-pointer">ಕನ್ನಡ</SelectItem>
                 </SelectContent>
               </Select>
             </div>

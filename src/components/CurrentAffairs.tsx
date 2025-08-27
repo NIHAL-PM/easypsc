@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,8 +72,9 @@ const CurrentAffairs = () => {
     setIsRefreshing(true);
     
     try {
-      // Fetch fresh news
-      const fetchedNews = await fetchNews(user?.examType);
+      // Fetch fresh news - pass user exam type as array
+      const examTypes = user?.examType ? [user.examType] : undefined;
+      const fetchedNews = await fetchNews(examTypes);
       
       if (fetchedNews.length === 0) {
         if (showToast) {
@@ -85,7 +85,7 @@ const CurrentAffairs = () => {
           });
         }
         // Try to use cached news as fallback
-        const cachedNews = getCachedNews(user?.examType);
+        const cachedNews = getCachedNews();
         if (cachedNews.length > 0) {
           setNews(cachedNews);
         }
@@ -111,7 +111,7 @@ const CurrentAffairs = () => {
       }
       
       // Try to use cached news as fallback
-      const cachedNews = getCachedNews(user?.examType);
+      const cachedNews = getCachedNews();
       if (cachedNews.length > 0) {
         setNews(cachedNews);
       }
@@ -148,7 +148,9 @@ const CurrentAffairs = () => {
     setIsRefreshing(true);
     
     try {
-      const freshNews = await forceRefreshNews(user?.examType);
+      forceRefreshNews();
+      const examTypes = user?.examType ? [user.examType] : undefined;
+      const freshNews = await fetchNews(examTypes);
       setNews(freshNews);
       
       toast({
