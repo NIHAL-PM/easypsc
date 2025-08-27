@@ -39,7 +39,6 @@ import { getGeminiApiKey } from '@/lib/env';
 import { getSystemStats } from '@/services/api';
 import { useQuestionStore } from '@/services/questionStore';
 import { Question, QuestionDifficulty, ExamType, Language } from '@/types';
-import { toQuestionDifficulty } from '@/utils/typeUtils';
 
 const AdminPanel = () => {
   const { toast } = useToast();
@@ -49,7 +48,7 @@ const AdminPanel = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [aiModel, setAiModel] = useState('gemini-1.5-flash');
+  const [aiModel, setAiModel] = useState('gemini-2.5-flash');
   const [systemStats, setSystemStats] = useState({
     totalUsers: 0,
     premiumUsers: 0,
@@ -70,7 +69,7 @@ const AdminPanel = () => {
     correctOption: 0,
     explanation: '',
     category: '',
-    difficulty: 'medium',
+    difficulty: 'medium' as QuestionDifficulty,
     examType: 'UPSC',
     language: 'English'
   });
@@ -81,7 +80,7 @@ const AdminPanel = () => {
   
   const examTypes: ExamType[] = ['UPSC', 'PSC', 'SSC', 'Banking', 'UGC NET'];
   const languages: Language[] = ['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'];
-  
+
   useEffect(() => {
     const storedApiKey = localStorage.getItem('GEMINI_API_KEY');
     const envApiKey = getGeminiApiKey();
@@ -198,7 +197,7 @@ const AdminPanel = () => {
       correctOption: newQuestion.correctOption || 0,
       explanation: newQuestion.explanation || '',
       category: newQuestion.category || 'General',
-      difficulty: (newQuestion.difficulty as QuestionDifficulty) || 'medium',
+      difficulty: newQuestion.difficulty as QuestionDifficulty,
       examType: selectedExamType,
       language: selectedLanguage
     });
@@ -209,7 +208,7 @@ const AdminPanel = () => {
       correctOption: 0,
       explanation: '',
       category: '',
-      difficulty: 'medium',
+      difficulty: 'medium' as QuestionDifficulty,
       examType: selectedExamType,
       language: selectedLanguage
     });
@@ -221,7 +220,7 @@ const AdminPanel = () => {
       description: `New ${selectedExamType} question in ${selectedLanguage} has been added`,
     });
   };
-  
+
   const handleBulkUpload = () => {
     if (!bulkQuestions.trim()) {
       toast({
@@ -434,7 +433,7 @@ const AdminPanel = () => {
       </div>
     );
   }
-  
+
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat().format(num);
   };
@@ -455,7 +454,7 @@ const AdminPanel = () => {
   };
   
   const examTypeData = formatExamTypeDistribution();
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/40 p-4">
       <div className="container mx-auto max-w-6xl">
@@ -703,7 +702,7 @@ const AdminPanel = () => {
                       <SelectValue placeholder="Select model" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                      <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
                       <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
                       <SelectItem value="gemini-1.0-pro">Gemini 1.0 Pro</SelectItem>
                     </SelectContent>
@@ -983,7 +982,7 @@ const AdminPanel = () => {
                 <Label htmlFor="difficulty">Difficulty</Label>
                 <Select 
                   value={newQuestion.difficulty || 'medium'}
-                  onValueChange={(value) => setNewQuestion({...newQuestion, difficulty: value})}
+                  onValueChange={(value) => setNewQuestion({...newQuestion, difficulty: value as QuestionDifficulty})}
                 >
                   <SelectTrigger id="difficulty">
                     <SelectValue placeholder="Select difficulty" />
@@ -1091,7 +1090,7 @@ const AdminPanel = () => {
                   <Label htmlFor="editDifficulty">Difficulty</Label>
                   <Select 
                     value={editingQuestion.difficulty}
-                    onValueChange={(value: any) => setEditingQuestion({...editingQuestion, difficulty: value})}
+                    onValueChange={(value: QuestionDifficulty) => setEditingQuestion({...editingQuestion, difficulty: value})}
                   >
                     <SelectTrigger id="editDifficulty">
                       <SelectValue placeholder="Select difficulty" />

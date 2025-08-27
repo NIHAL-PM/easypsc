@@ -88,12 +88,12 @@ export const forceRefreshNews = (): void => {
   localStorage.removeItem(NEWS_CACHE_TIMESTAMP_KEY);
 };
 
-export const fetchNews = async (examTypes: ExamType[] = []): Promise<NewsItem[]> => {
+export const fetchNews = async (examTypes?: ExamType[]): Promise<NewsItem[]> => {
   try {
     // For now, return cached/fallback news with exam filtering
     const allNews = getCachedNews();
     
-    if (examTypes.length === 0) {
+    if (!examTypes || examTypes.length === 0) {
       return allNews;
     }
     

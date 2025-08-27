@@ -1,117 +1,70 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { Question, QuestionDifficulty, ExamType, Language } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { Question, ExamType, Language } from '@/types';
 
 interface QuestionStore {
   customQuestions: Question[];
   addCustomQuestion: (question: Omit<Question, 'id'>) => void;
-  updateQuestion: (id: string, updates: Partial<Question>) => void;
+  addQuestion: (question: Omit<Question, 'id'>) => void;
+  updateQuestion: (id: string, question: Question) => void;
   deleteQuestion: (id: string) => void;
-  getQuestionsByExamTypeAndLanguage: (examType: ExamType, language: Language) => Question[];
-  clearQuestions: () => void;
+  getQuestionsByExamType: (examType: ExamType, language?: Language) => Question[];
 }
 
 export const useQuestionStore = create<QuestionStore>()(
   persist(
     (set, get) => ({
-      customQuestions: [
-        // Sample questions for each exam type and language
-        {
-          id: '1',
-          text: 'Who is known as the Father of the Nation in India?',
-          options: ['Mahatma Gandhi', 'Jawaharlal Nehru', 'Sardar Patel', 'Dr. APJ Abdul Kalam'],
-          correctOption: 0,
-          explanation: 'Mahatma Gandhi is widely regarded as the Father of the Nation in India for his role in the independence movement.',
-          category: 'History',
-          difficulty: 'easy' as const,
-          examType: 'UPSC' as ExamType,
-          language: 'English' as Language
-        },
-        {
-          id: '2',
-          text: 'भारत के राष्ट्रपिता कौन हैं?',
-          options: ['महात्मा गांधी', 'जवाहरलाल नेहरू', 'सरदार पटेल', 'डॉ. एपीजे अब्दुल कलाम'],
-          correctOption: 0,
-          explanation: 'महात्मा गांधी को भारत के राष्ट्रपिता के रूप में जाना जाता है।',
-          category: 'History',
-          difficulty: 'easy' as const,
-          examType: 'UPSC' as ExamType,
-          language: 'Hindi' as Language
-        },
-        {
-          id: '3',
-          text: 'What is the largest organ in the human body?',
-          options: ['Heart', 'Liver', 'Brain', 'Skin'],
-          correctOption: 3,
-          explanation: 'The skin is the largest organ in the human body by surface area.',
-          category: 'Science',
-          difficulty: 'medium' as const,
-          examType: 'SSC' as ExamType,
-          language: 'English' as Language
-        },
-        {
-          id: '4',
-          text: 'Which bank is known as the Banker\'s Bank in India?',
-          options: ['State Bank of India', 'Reserve Bank of India', 'ICICI Bank', 'HDFC Bank'],
-          correctOption: 1,
-          explanation: 'The Reserve Bank of India (RBI) is known as the Banker\'s Bank as it regulates all other banks.',
-          category: 'Economics',
-          difficulty: 'medium' as const,
-          examType: 'Banking' as ExamType,
-          language: 'English' as Language
-        }
-      ],
+      customQuestions: [],
       
-      addCustomQuestion: (question) => {
-        const newQuestion: Question = {
-          ...question,
+      addCustomQuestion: (questionData) => {
+        const question: Question = {
           id: uuidv4(),
+          ...questionData
         };
         
         set((state) => ({
-          customQuestions: [...state.customQuestions, newQuestion],
+          customQuestions: [...state.customQuestions, question]
         }));
       },
       
-      addQuestion: (question) => {
-        const newQuestion: Question = {
-          ...question,
+      addQuestion: (questionData) => {
+        const question: Question = {
           id: uuidv4(),
+          ...questionData
         };
         
         set((state) => ({
-          customQuestions: [...state.customQuestions, newQuestion],
+          customQuestions: [...state.customQuestions, question]
         }));
       },
       
-      updateQuestion: (id, updates) => {
+      updateQuestion: (id: string, updatedQuestion: Question) => {
         set((state) => ({
-          customQuestions: state.customQuestions.map((question) =>
-            question.id === id ? { ...question, ...updates } : question
-          ),
+          customQuestions: state.customQuestions.map(q => 
+            q.id === id ? updatedQuestion : q
+          )
         }));
       },
       
-      deleteQuestion: (id) => {
+      deleteQuestion: (id: string) => {
         set((state) => ({
-          customQuestions: state.customQuestions.filter((question) => question.id !== id),
+          customQuestions: state.customQuestions.filter(q => q.id !== id)
         }));
       },
       
-      getQuestionsByExamTypeAndLanguage: (examType, language) => {
+      getQuestionsByExamType: (examType: ExamType, language?: Language) => {
         const { customQuestions } = get();
-        return customQuestions.filter(
-          (question) => question.examType === examType && question.language === language
-        );
-      },
-      
-      clearQuestions: () => {
-        set({ customQuestions: [] });
-      },
+        return customQuestions.filter(q => {
+          const matchesExamType = q.examType === examType;
+          const matchesLanguage = !language || q.language === language;
+          return matchesExamType && matchesLanguage;
+        });
+      }
     }),
     {
-      name: 'question-store',
+      name: 'question-store-storage'
     }
   )
 );

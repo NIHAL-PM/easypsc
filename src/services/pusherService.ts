@@ -2,8 +2,7 @@
 // Pusher configuration
 const PUSHER_CONFIG = {
   key: 'fbae605a53abe8b81a60',
-  cluster: 'ap2',
-  encrypted: true
+  cluster: 'ap2'
 };
 
 interface PusherMessage {
@@ -29,8 +28,7 @@ class PusherService {
       const Pusher = (await import('pusher-js')).default;
       
       this.pusher = new Pusher(PUSHER_CONFIG.key, {
-        cluster: PUSHER_CONFIG.cluster,
-        encrypted: PUSHER_CONFIG.encrypted,
+        cluster: PUSHER_CONFIG.cluster
       });
 
       console.log('Pusher initialized successfully');
